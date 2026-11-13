@@ -1,0 +1,98 @@
+[
+  {
+    "id": "2dfd1b12-e1bb-4b1b-a890-e946f2766a50",
+    "category": "DO",
+    "title": "스위스 융프라우에서 오로라와 알프스 만끽하기",
+    "vivid_description": "유리 이글루 천장 너머로 반짝이는 별과 눈 덮인 설산 알프스를 바라보며, 따뜻한 벽난로 앞에서 사랑하는 사람과 여유를 즐긴다.",
+    "target_date": "2027-05",
+    "affirmation": "나는 전 세계 아름다운 곳을 자유롭게 누비며 매 순간 감사함으로 가득 차 있다.",
+    "is_completed": false,
+    "completed_at": null,
+    "primary_media": {
+      "id": "4d224265-3f88-4081-92da-3a74d19ada5d",
+      "media_type": "image",
+      "url": "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=1200&auto=format&fit=crop&q=80",
+      "source": "web_search",
+      "thumbnail_url": null,
+      "caption": "스위스 알프스 설산",
+      "created_at": "2026-11-11T06:26:10.896413"
+    },
+    "media_history": [
+      {
+        "id": "4d224265-3f88-4081-92da-3a74d19ada5d",
+        "media_type": "image",
+        "url": "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=1200&auto=format&fit=crop&q=80",
+        "source": "web_search",
+        "thumbnail_url": null,
+        "caption": "스위스 알프스 설산",
+        "created_at": "2026-11-11T06:26:10.896413"
+      }
+    ],
+    "created_at": "2026-11-11T06:26:10.896520",
+    "updated_at": "2026-11-11T06:26:10.896529"
+  },
+  {
+    "id": "8680308a-64aa-4108-ab87-656034793a53",
+    "category": "HAVE",
+    "title": "남산타워 뷰가 한눈에 보이는 통창 원목 서재",
+    "vivid_description": "천장부터 바닥까지 닿는 통창으로 아침 햇살이 가득 쏟아지고, 은은한 원목 향과 클래식 재즈가 흐르는 나만의 집중과 사색의 공간.",
+    "target_date": "2027-12",
+    "affirmation": "내 공간은 평온과 풍요의 원천이며, 최고의 영감과 통찰을 선물한다.",
+    "is_completed": false,
+    "completed_at": null,
+    "primary_media": {
+      "id": "852fc9fe-06b3-42e3-a9ac-f3e3238d693d",
+      "media_type": "image",
+      "url": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&auto=format&fit=crop&q=80",
+      "source": "web_search",
+      "thumbnail_url": null,
+      "caption": "햇살 가득한 통창 서재",
+      "created_at": "2026-11-11T06:26:10.896700"
+    },
+    "media_history": [
+      {
+        "id": "852fc9fe-06b3-42e3-a9ac-f3e3238d693d",
+        "media_type": "image",
+        "url": "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&auto=format&fit=crop&q=80",
+        "source": "web_search",
+        "thumbnail_url": null,
+        "caption": "햇살 가득한 통창 서재",
+        "created_at": "2026-11-11T06:26:10.896700"
+      }
+    ],
+    "created_at": "2026-11-11T06:26:10.896746",
+    "updated_at": "2026-11-11T06:26:10.896753"
+  },
+  {
+    "id": "8f9292ab-af19-4816-8388-4423236007c7",
+    "category": "GIVE",
+    "title": "부모님 칠순 기념 하와이 비즈니스석 가족 힐링 여행",
+    "vivid_description": "편안한 비즈니스 좌석에서 와인을 마시며 활짝 웃으시는 부모님, 와이키키 해변 앞 최고급 오션뷰 리조트에서 모든 것을 아낌없이 대접하는 행복한 순간.",
+    "target_date": "2028-06",
+    "affirmation": "나는 사랑하는 가족에게 언제나 든든한 버팀목이자 풍요로운 기쁨을 주는 존재이다.",
+    "is_completed": false,
+    "completed_at": null,
+    "primary_media": {
+      "id": "4d3d3bd3-0c44-4855-9878-ab3494c99952",
+      "media_type": "image",
+      "url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80",
+      "source": "web_search",
+      "thumbnail_url": null,
+      "caption": "하와이 에메랄드빛 해변",
+      "created_at": "2026-11-11T06:26:10.896806"
+    },
+    "media_history": [
+      {
+        "id": "4d3d3bd3-0c44-4855-9878-ab3494c99952",
+        "media_type": "image",
+        "url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop&q=80",
+        "source": "web_search",
+        "thumbnail_url": null,
+        "caption": "하와이 에메랄드빛 해변",
+        "created_at": "2026-11-11T06:26:10.896806"
+      }
+    ],
+    "created_at": "2026-11-11T06:26:10.896836",
+    "updated_at": "2026-11-11T06:26:10.896843"
+  }
+]

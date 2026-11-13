@@ -1,0 +1,17 @@
+{
+  "name": "나의 꿈보드",
+  "short_name": "꿈보드",
+  "description": "하고싶은것, 갖고싶은것, 해주고싶은것을 생생하게 기록하고 시각화하는 꿈보드",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3209/3209990.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
