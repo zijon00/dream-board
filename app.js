@@ -149,8 +149,11 @@ function initApp() {
   setupEventListeners();
 }
 
-// Global Google Login Trigger
+// Global Google Login Trigger (with concurrency lock to prevent double-popup)
+let isLoggingIn = false;
 window.doGoogleLogin = async function() {
+  if (isLoggingIn) return;
+  isLoggingIn = true;
   try {
     showToast("구글 로그인 창을 여는 중...");
     const result = await signInWithPopup(auth, googleProvider);
@@ -159,17 +162,20 @@ window.doGoogleLogin = async function() {
     }
   } catch (err) {
     console.warn("Popup error:", err);
-    // If popup was blocked or closed by user, try redirect
-    if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+    if (err.code === "auth/popup-blocked") {
       try {
         showToast("팝업이 차단되어 페이지 이동 로그인으로 전환합니다...");
         await signInWithRedirect(auth, googleProvider);
       } catch (rErr) {
         alert("로그인 페이지 이동 실패: [" + (rErr.code || 'UNKNOWN') + "] " + rErr.message);
       }
+    } else if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+      showToast("로그인이 취소되었습니다.");
     } else {
       alert("구글 로그인 오류: [" + (err.code || 'UNKNOWN') + "] " + (err.message || err));
     }
+  } finally {
+    isLoggingIn = false;
   }
 };
 
@@ -214,9 +220,7 @@ function setupAuth() {
     }
   });
 
-  btnLogin.addEventListener("click", () => {
-    window.doGoogleLogin();
-  });
+  // Note: btn-login click is handled via onclick="window.doGoogleLoginFallback()" to prevent duplicate triggers.
 
   btnLogout.addEventListener("click", async () => {
     try {
