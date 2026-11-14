@@ -2,6 +2,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebas
 import { 
   getAuth, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   onAuthStateChanged, 
   signOut 
@@ -174,11 +176,26 @@ function setupAuth() {
     }
   });
 
+  // Check redirect result on load
+  getRedirectResult(auth).catch((err) => {
+    console.error("Redirect error:", err);
+  });
+
   btnLogin.addEventListener("click", async () => {
     try {
+      showToast("구글 로그인 진행 중...");
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      showToast("로그인 실패: " + err.message);
+      console.warn("Popup blocked or failed, trying redirect:", err);
+      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (rErr) {
+          showToast("로그인 실패: " + rErr.message);
+        }
+      } else {
+        showToast("로그인 오류: " + (err.message || err.code));
+      }
     }
   });
 
