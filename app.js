@@ -1,3 +1,41 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  onAuthStateChanged, 
+  signOut 
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  deleteDoc, 
+  onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+// Firebase Configuration for project dream-board-vivid
+const firebaseConfig = {
+  apiKey: "AIzaSyC06UG7Slxh-4Wg-dVng485XQXDxf-6vuo",
+  authDomain: "dream-board-vivid.firebaseapp.com",
+  projectId: "dream-board-vivid",
+  storageBucket: "dream-board-vivid.firebasestorage.app",
+  messagingSenderId: "1042099746530",
+  appId: "1:1042099746530:web:d2f7d0015fcd60cec290bb"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+// Current User State
+let currentUser = null;
+let unsubscribeFirestore = null;
+
 // Helper: Format Korean Won currency
 function formatKoreanCurrency(amount) {
   if (!amount || isNaN(amount) || amount <= 0) return "0원";
@@ -93,11 +131,96 @@ const slideAffirmationBox = document.getElementById("slide-affirmation-box");
 const slideCatBadge = document.getElementById("slide-cat-badge");
 const slideCounter = document.getElementById("slide-counter");
 
+// Auth Elements
+const btnLogin = document.getElementById("btn-login");
+const btnLogout = document.getElementById("btn-logout");
+const userProfile = document.getElementById("user-profile");
+const userAvatar = document.getElementById("user-avatar");
+const userName = document.getElementById("user-name");
+
 // Init
 document.addEventListener("DOMContentLoaded", () => {
+  setupAuth();
   fetchDreams();
   setupEventListeners();
 });
+
+function setupAuth() {
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    if (user) {
+      // User is signed in
+      btnLogin.classList.add("hidden");
+      userProfile.classList.remove("hidden");
+      userProfile.classList.add("flex");
+      userAvatar.src = user.photoURL || "https://cdn-icons-png.flaticon.com/512/3209/3209990.png";
+      userName.textContent = user.displayName || user.email.split("@")[0];
+      showToast(`${user.displayName || '회원'}님, 환영합니다! 클라우드 동기화 중 ✨`);
+
+      // Sync local dreams to Firestore if local dreams exist
+      await syncLocalDreamsToFirestore(user.uid);
+      // Listen to real-time updates from Firestore
+      subscribeToFirestore(user.uid);
+    } else {
+      // User is signed out
+      btnLogin.classList.remove("hidden");
+      userProfile.classList.add("hidden");
+      userProfile.classList.remove("flex");
+      if (unsubscribeFirestore) {
+        unsubscribeFirestore();
+        unsubscribeFirestore = null;
+      }
+      fetchDreams();
+    }
+  });
+
+  btnLogin.addEventListener("click", async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      showToast("로그인 실패: " + err.message);
+    }
+  });
+
+  btnLogout.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      showToast("로그아웃 되었습니다.");
+    } catch (err) {}
+  });
+}
+
+async function syncLocalDreamsToFirestore(uid) {
+  const localDreams = loadDreamsLocally();
+  if (localDreams && localDreams.length > 0) {
+    try {
+      for (const d of localDreams) {
+        const dreamRef = doc(db, "users", uid, "dreams", d.id);
+        await setDoc(dreamRef, d, { merge: true });
+      }
+    } catch (err) {}
+  }
+}
+
+function subscribeToFirestore(uid) {
+  if (unsubscribeFirestore) unsubscribeFirestore();
+  const dreamsCol = collection(db, "users", uid, "dreams");
+  unsubscribeFirestore = onSnapshot(dreamsCol, (snapshot) => {
+    const cloudDreams = [];
+    snapshot.forEach((doc) => {
+      cloudDreams.push(doc.data());
+    });
+    // Sort latest first
+    cloudDreams.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    dreams = cloudDreams;
+    saveDreamsLocally();
+    updateCounts();
+    renderDreams();
+  }, (err) => {
+    // Fallback to local
+    fetchDreams();
+  });
+}
 
 function setupEventListeners() {
   // Category tabs
@@ -515,22 +638,16 @@ async function handleDreamFormSubmit(e) {
   closeDreamModal();
   showToast(dreamId ? "꿈이 수정되었습니다." : "새로운 꿈이 등록되었습니다!");
 
-  // Background server sync if possible
-  try {
-    if (dreamId) {
-      await fetch(`/api/dreams/${dreamId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      await fetch("/api/dreams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-    }
-  } catch (err) {}
+  // Cloud Firestore Sync
+  if (currentUser) {
+    try {
+      const targetId = dreamId || dreams[0].id;
+      const targetDream = dreams.find(d => d.id === targetId);
+      if (targetDream) {
+        await setDoc(doc(db, "users", currentUser.uid, "dreams", targetId), targetDream);
+      }
+    } catch (err) {}
+  }
 
   if (!dreamId) {
     openMediaModal(dreams[0].id);
@@ -544,9 +661,13 @@ async function deleteDream(dreamId) {
   updateCounts();
   renderDreams();
   showToast("꿈 카드가 삭제되었습니다.");
-  try {
-    await fetch(`/api/dreams/${dreamId}`, { method: "DELETE" });
-  } catch (err) {}
+
+  // Cloud Firestore Delete
+  if (currentUser) {
+    try {
+      await deleteDoc(doc(db, "users", currentUser.uid, "dreams", dreamId));
+    } catch (err) {}
+  }
 }
 
 async function toggleDreamComplete(dreamId) {
@@ -555,6 +676,21 @@ async function toggleDreamComplete(dreamId) {
   d.is_completed = !d.is_completed;
   d.completed_at = d.is_completed ? new Date().toISOString().split("T")[0] : null;
   saveDreamsLocally();
+  updateCounts();
+  renderDreams();
+
+  if (d.is_completed && window.confetti) {
+    window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    showToast("축하합니다! 꿈을 현실로 이루어내셨습니다! 🎉✨");
+  }
+
+  // Cloud Firestore Sync
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "dreams", dreamId), d, { merge: true });
+    } catch (err) {}
+  }
+}
   updateCounts();
   renderDreams();
 
@@ -610,6 +746,14 @@ function renderMediaHistory(dream) {
   }).join("");
 }
 
+async function saveCurrentDreamToFirestore(d) {
+  if (currentUser && d) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "dreams", d.id), d, { merge: true });
+    } catch (err) {}
+  }
+}
+
 async function setPrimaryMedia(mediaId) {
   if (!currentManagingDreamId) return;
   const d = dreams.find(item => item.id === currentManagingDreamId);
@@ -618,18 +762,12 @@ async function setPrimaryMedia(mediaId) {
     if (matched) {
       d.primary_media = matched;
       saveDreamsLocally();
+      saveCurrentDreamToFirestore(d);
       renderMediaHistory(d);
       renderDreams();
       showToast("대표 미디어가 변경되었습니다.");
     }
   }
-  try {
-    await fetch(`/api/dreams/${currentManagingDreamId}/media/set-primary`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ media_id: mediaId })
-    });
-  } catch (err) {}
 }
 
 async function handleFileUpload(file) {
@@ -637,7 +775,6 @@ async function handleFileUpload(file) {
   const d = dreams.find(item => item.id === currentManagingDreamId);
   if (!d) return;
 
-  // Local FileReader for instantaneous offline mobile preview
   const reader = new FileReader();
   reader.onload = async (e) => {
     const base64Url = e.target.result;
@@ -654,19 +791,12 @@ async function handleFileUpload(file) {
     d.media_history.unshift(newMedia);
     d.primary_media = newMedia;
     saveDreamsLocally();
+    saveCurrentDreamToFirestore(d);
     renderMediaHistory(d);
     renderDreams();
     showToast("미디어가 성공적으로 보존되었습니다!");
   };
   reader.readAsDataURL(file);
-
-  // Optional background upload to server
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("caption", file.name);
-    await fetch(`/api/dreams/${currentManagingDreamId}/media/upload`, { method: "POST", body: formData });
-  } catch (err) {}
 }
 
 async function handleDirectUrlSubmit() {
@@ -690,17 +820,10 @@ async function handleDirectUrlSubmit() {
   d.primary_media = newMedia;
   directUrlInput.value = "";
   saveDreamsLocally();
+  saveCurrentDreamToFirestore(d);
   renderMediaHistory(d);
   renderDreams();
   showToast("링크 미디어가 추가되었습니다.");
-
-  try {
-    await fetch(`/api/dreams/${currentManagingDreamId}/media/direct-url`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, media_type: newMedia.media_type, caption: newMedia.caption })
-    });
-  } catch (err) {}
 }
 
 async function selectWebMedia(url, title) {
@@ -721,17 +844,10 @@ async function selectWebMedia(url, title) {
   d.media_history.unshift(newMedia);
   d.primary_media = newMedia;
   saveDreamsLocally();
+  saveCurrentDreamToFirestore(d);
   renderMediaHistory(d);
   renderDreams();
   showToast("인터넷 사진이 안전하게 내 보드에 연결되었습니다!");
-
-  try {
-    await fetch(`/api/dreams/${currentManagingDreamId}/media/select-web`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, title })
-    });
-  } catch (err) {}
 }
 
 async function handleAiGenerate() {
