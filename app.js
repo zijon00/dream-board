@@ -384,16 +384,16 @@ async function fetchDreams() {
   const localData = loadDreamsLocally();
   if (localData && localData.length > 0) {
     dreams = localData;
-    updateCounts();
-    renderDreams();
   }
+  updateCounts();
+  renderDreams();
 
   // 2. Fetch server if available (e.g. initial seed or sync)
   try {
     const res = await fetch("/api/dreams");
     if (res.ok) {
       const serverData = await res.json();
-      if (!localData || localData.length === 0) {
+      if (Array.isArray(serverData) && (!localData || localData.length === 0)) {
         dreams = serverData;
         saveDreamsLocally();
         updateCounts();
