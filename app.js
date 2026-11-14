@@ -142,17 +142,11 @@ const userProfile = document.getElementById("user-profile");
 const userAvatar = document.getElementById("user-avatar");
 const userName = document.getElementById("user-name");
 
-// Init
+// Init function (invoked at bottom after all bindings)
 function initApp() {
   setupAuth();
   fetchDreams();
   setupEventListeners();
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initApp);
-} else {
-  initApp();
 }
 
 // Global Google Login Trigger
@@ -856,6 +850,55 @@ async function handleDirectUrlSubmit() {
   showToast("링크 미디어가 추가되었습니다.");
 }
 
+async function performWebSearch() {
+  const query = searchQueryInput.value.trim();
+  if (!query) return;
+
+  searchLoading.classList.remove("hidden");
+  searchResultsGrid.innerHTML = "";
+
+  const results = [];
+  try {
+    const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=9&prop=imageinfo&iiprop=url&format=json&origin=*`;
+    const res = await fetch(wikiUrl);
+    if (res.ok) {
+      const data = await res.json();
+      const pages = data.query?.pages ? Object.values(data.query.pages) : [];
+      for (const p of pages) {
+        const imgUrl = p.imageinfo?.[0]?.url;
+        if (imgUrl && /\.(jpg|jpeg|png|webp)$/i.test(imgUrl)) {
+          results.push({ url: imgUrl, title: p.title.replace(/^File:/, "") });
+        }
+      }
+    }
+  } catch (e) {}
+
+  // Fallback high-res curated photos if Wikimedia returns too few
+  if (results.length < 3) {
+    const fallbackSeeds = [
+      `https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80`,
+      `https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&auto=format&fit=crop&q=80`,
+      `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80`,
+      `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop&q=80`,
+      `https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&auto=format&fit=crop&q=80`,
+      `https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80`
+    ];
+    fallbackSeeds.forEach((u, idx) => {
+      results.push({ url: u, title: `${query} 추천 이미지 ${idx + 1}` });
+    });
+  }
+
+  searchLoading.classList.add("hidden");
+  searchResultsGrid.innerHTML = results.slice(0, 9).map(item => `
+    <div onclick="window.selectWebMedia('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')" class="group relative aspect-video rounded-xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500 cursor-pointer transition">
+      <img src="${item.url}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />
+      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+        <span class="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold">선택하기</span>
+      </div>
+    </div>
+  `).join("");
+}
+
 async function selectWebMedia(url, title) {
   if (!currentManagingDreamId) return;
   const d = dreams.find(item => item.id === currentManagingDreamId);
@@ -1046,4 +1089,19 @@ function showToast(msg) {
   setTimeout(() => {
     toast.classList.add("hidden");
   }, 3500);
+}
+
+// Expose handlers globally for inline onclick templates inside ES module
+window.openDreamModal = openDreamModal;
+window.openMediaModal = openMediaModal;
+window.toggleDreamComplete = toggleDreamComplete;
+window.deleteDream = deleteDream;
+window.setPrimaryMedia = setPrimaryMedia;
+window.selectWebMedia = selectWebMedia;
+
+// Start application
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
 }
