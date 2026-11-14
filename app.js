@@ -70,6 +70,8 @@ function calculateDDay(deadlineStr) {
   if (diffDays > 0) return { text: `D-${diffDays}`, isUrgent: diffDays <= 30, isPassed: false };
   return { text: `D+${Math.abs(diffDays)} (지남)`, isUrgent: false, isPassed: true };
 }
+// State
+let dreams = [];
 let activeCategory = "ALL";
 let filterOnlyCompleted = false;
 let currentView = "grid";
