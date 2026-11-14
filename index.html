@@ -57,7 +57,7 @@
       <div class="flex items-center space-x-2 sm:space-x-3">
         <!-- Auth Container -->
         <div id="auth-container" class="flex items-center">
-          <button id="btn-login" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center space-x-2">
+          <button id="btn-login" onclick="window.doGoogleLoginFallback()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center space-x-2">
             <i class="fa-brands fa-google text-amber-400"></i>
             <span>로그인</span>
           </button>
@@ -421,7 +421,16 @@
     <span id="toast-msg">알림 메시지</span>
   </div>
 
+  <script>
+    window.doGoogleLoginFallback = function() {
+      if (typeof window.doGoogleLogin === 'function') {
+        window.doGoogleLogin();
+      } else {
+        alert("로그인 모듈을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
+      }
+    };
+  </script>
   <!-- Firebase SDKs (Modular v10) -->
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=20261115_02"></script>
 </body>
 </html>

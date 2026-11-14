@@ -153,6 +153,30 @@ if (document.readyState === "loading") {
   initApp();
 }
 
+// Global Google Login Trigger
+window.doGoogleLogin = async function() {
+  try {
+    showToast("구글 로그인 창을 여는 중...");
+    const result = await signInWithPopup(auth, googleProvider);
+    if (result && result.user) {
+      showToast(`${result.user.displayName || '회원'}님, 환영합니다! ✨`);
+    }
+  } catch (err) {
+    console.warn("Popup error:", err);
+    // If popup was blocked or closed by user, try redirect
+    if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+      try {
+        showToast("팝업이 차단되어 페이지 이동 로그인으로 전환합니다...");
+        await signInWithRedirect(auth, googleProvider);
+      } catch (rErr) {
+        alert("로그인 페이지 이동 실패: [" + (rErr.code || 'UNKNOWN') + "] " + rErr.message);
+      }
+    } else {
+      alert("구글 로그인 오류: [" + (err.code || 'UNKNOWN') + "] " + (err.message || err));
+    }
+  }
+};
+
 function setupAuth() {
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
@@ -194,27 +218,8 @@ function setupAuth() {
     }
   });
 
-  btnLogin.addEventListener("click", async () => {
-    try {
-      showToast("구글 로그인 창을 여는 중...");
-      const result = await signInWithPopup(auth, googleProvider);
-      if (result && result.user) {
-        showToast(`${result.user.displayName || '회원'}님, 환영합니다! ✨`);
-      }
-    } catch (err) {
-      console.warn("Popup error:", err);
-      // If popup was blocked or closed by user, try redirect
-      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
-        try {
-          showToast("팝업이 차단되어 페이지 이동 로그인으로 전환합니다...");
-          await signInWithRedirect(auth, googleProvider);
-        } catch (rErr) {
-          alert("로그인 페이지 이동 실패: [" + (rErr.code || 'UNKNOWN') + "] " + rErr.message);
-        }
-      } else {
-        alert("구글 로그인 오류: [" + (err.code || 'UNKNOWN') + "] " + (err.message || err));
-      }
-    }
+  btnLogin.addEventListener("click", () => {
+    window.doGoogleLogin();
   });
 
   btnLogout.addEventListener("click", async () => {
