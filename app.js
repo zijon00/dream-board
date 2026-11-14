@@ -141,11 +141,17 @@ const userAvatar = document.getElementById("user-avatar");
 const userName = document.getElementById("user-name");
 
 // Init
-document.addEventListener("DOMContentLoaded", () => {
+function initApp() {
   setupAuth();
   fetchDreams();
   setupEventListeners();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
 
 function setupAuth() {
   onAuthStateChanged(auth, async (user) => {
@@ -157,7 +163,7 @@ function setupAuth() {
       userProfile.classList.add("flex");
       userAvatar.src = user.photoURL || "https://cdn-icons-png.flaticon.com/512/3209/3209990.png";
       userName.textContent = user.displayName || user.email.split("@")[0];
-      showToast(`${user.displayName || '회원'}님, 환영합니다! 클라우드 동기화 중 ✨`);
+      showToast(`${user.displayName || '회원'}님 환영합니다! 동기화 중 ✨`);
 
       // Sync local dreams to Firestore if local dreams exist
       await syncLocalDreamsToFirestore(user.uid);
@@ -177,24 +183,36 @@ function setupAuth() {
   });
 
   // Check redirect result on load
-  getRedirectResult(auth).catch((err) => {
+  getRedirectResult(auth).then((result) => {
+    if (result && result.user) {
+      showToast(`${result.user.displayName || '회원'}님, 로그인 성공! ✨`);
+    }
+  }).catch((err) => {
     console.error("Redirect error:", err);
+    if (err.code) {
+      alert("구글 로그인 리디렉션 오류: [" + err.code + "] " + err.message);
+    }
   });
 
   btnLogin.addEventListener("click", async () => {
     try {
-      showToast("구글 로그인 진행 중...");
-      await signInWithPopup(auth, googleProvider);
+      showToast("구글 로그인 창을 여는 중...");
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result && result.user) {
+        showToast(`${result.user.displayName || '회원'}님, 환영합니다! ✨`);
+      }
     } catch (err) {
-      console.warn("Popup blocked or failed, trying redirect:", err);
-      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+      console.warn("Popup error:", err);
+      // If popup was blocked or closed by user, try redirect
+      if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
         try {
+          showToast("팝업이 차단되어 페이지 이동 로그인으로 전환합니다...");
           await signInWithRedirect(auth, googleProvider);
         } catch (rErr) {
-          showToast("로그인 실패: " + rErr.message);
+          alert("로그인 페이지 이동 실패: [" + (rErr.code || 'UNKNOWN') + "] " + rErr.message);
         }
       } else {
-        showToast("로그인 오류: " + (err.message || err.code));
+        alert("구글 로그인 오류: [" + (err.code || 'UNKNOWN') + "] " + (err.message || err));
       }
     }
   });

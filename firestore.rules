@@ -1,0 +1,168 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - uid: string (optional, must match request.auth.uid)
+    //   - email: string (optional, max 100 chars)
+    //   - displayName: string (optional, max 100 chars)
+    //   - photoURL: string (optional, max 2000 chars)
+    //   - created_at: string (optional, max 100 chars)
+    //   - updated_at: string (optional, max 100 chars)
+    //
+    // Collection: /users/{userId}/dreams/{dreamId}
+    // Document ID: string (e.g. "dream-1731602400000")
+    // Fields:
+    //   - id: string (optional/required, max 100 chars, immutable on update)
+    //   - title: string (required, 1-200 chars)
+    //   - category: string (required, 'DO' | 'HAVE' | 'GIVE')
+    //   - description: string (optional, max 5000 chars)
+    //   - vivid_description: string (optional, max 5000 chars)
+    //   - deadline: string (optional, max 100 chars)
+    //   - target_date: string (optional, max 100 chars)
+    //   - budget: number (optional, >= 0, <= 1000000000000)
+    //   - estimated_budget: number (optional, >= 0, <= 1000000000000)
+    //   - budget_notes: string (optional, max 1000 chars)
+    //   - media_type: string (optional, 'image' | 'video')
+    //   - media_url: string (optional, http/https, data URL, or storage URL, max 1000000 chars)
+    //   - primary_media: map or null (optional)
+    //   - media_history: list (optional, max 50 items)
+    //   - completed: bool (optional)
+    //   - is_completed: bool (optional)
+    //   - completed_at: string or null (optional, max 100 chars)
+    //   - affirmation: string (optional, max 1000 chars)
+    //   - created_at: string (optional, max 100 chars, immutable on update)
+    //   - updated_at: string (optional, max 100 chars)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    function isValidOptionalNumber(field, minVal, maxVal) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is number &&
+         request.resource.data[field] >= minVal &&
+         request.resource.data[field] <= maxVal);
+    }
+
+    function isValidOptionalBool(field) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is bool);
+    }
+
+    function isValidMediaUrl(url) {
+      return url is string &&
+        url.size() > 0 &&
+        url.size() <= 1000000 &&
+        (url.matches("^https?://.*") || url.matches("^data:(image|video)/.*") || url.matches("^blob:.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators (Applied on BOTH create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'created_at', 'updated_at']) &&
+        (!('uid' in data) || (data.uid is string && data.uid == request.auth.uid)) &&
+        isValidOptionalString('email', 1, 100) &&
+        isValidOptionalString('displayName', 1, 100) &&
+        isValidOptionalString('photoURL', 1, 2000) &&
+        isValidOptionalString('created_at', 1, 100) &&
+        isValidOptionalString('updated_at', 1, 100);
+    }
+
+    function isValidDream(data) {
+      return hasRequiredFields(['title', 'category']) &&
+        hasOnlyAllowedFields([
+          'id', 'title', 'category', 'description', 'vivid_description',
+          'deadline', 'target_date', 'budget', 'estimated_budget', 'budget_notes',
+          'media_type', 'media_url', 'primary_media', 'media_history',
+          'completed', 'is_completed', 'completed_at', 'affirmation',
+          'created_at', 'updated_at'
+        ]) &&
+        data.title is string &&
+        data.title.size() >= 1 &&
+        data.title.size() <= 200 &&
+        data.category is string &&
+        data.category in ['DO', 'HAVE', 'GIVE'] &&
+        isValidOptionalString('id', 1, 100) &&
+        isValidOptionalString('description', 0, 5000) &&
+        isValidOptionalString('vivid_description', 0, 5000) &&
+        isValidOptionalString('deadline', 0, 100) &&
+        isValidOptionalString('target_date', 0, 100) &&
+        isValidOptionalNumber('budget', 0, 1000000000000) &&
+        isValidOptionalNumber('estimated_budget', 0, 1000000000000) &&
+        isValidOptionalString('budget_notes', 0, 1000) &&
+        (!('media_type' in data) || (data.media_type is string && data.media_type in ['image', 'video'])) &&
+        (!('media_url' in data) || (data.media_url is string && isValidMediaUrl(data.media_url))) &&
+        (!('primary_media' in data) || data.primary_media == null || data.primary_media is map) &&
+        (!('media_history' in data) || (data.media_history is list && data.media_history.size() <= 50)) &&
+        isValidOptionalBool('completed') &&
+        isValidOptionalBool('is_completed') &&
+        (!('completed_at' in data) || data.completed_at == null || (data.completed_at is string && data.completed_at.size() <= 100)) &&
+        isValidOptionalString('affirmation', 0, 1000) &&
+        isValidOptionalString('created_at', 1, 100) &&
+        isValidOptionalString('updated_at', 1, 100);
+    }
+
+    function areImmutableDreamFieldsUnchanged() {
+      return (!('id' in resource.data) || !('id' in request.resource.data) || request.resource.data.id == resource.data.id) &&
+             (!('created_at' in resource.data) || !('created_at' in request.resource.data) || request.resource.data.created_at == resource.data.created_at);
+    }
+
+    // ===============================================================
+    // Root Match & Rules
+    // ===============================================================
+
+    // Default Deny: Deny all reads and writes by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User profile document
+    match /users/{userId} {
+      allow read, delete: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+
+      // Dream board subcollection: /users/{userId}/dreams/{dreamId}
+      match /dreams/{dreamId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidDream(request.resource.data);
+        allow update: if isOwner(userId) && isValidDream(request.resource.data) && areImmutableDreamFieldsUnchanged();
+      }
+    }
+  }
+}
