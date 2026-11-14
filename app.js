@@ -861,46 +861,78 @@ async function performWebSearch() {
   searchLoading.classList.remove("hidden");
   searchResultsGrid.innerHTML = "";
 
-  const results = [];
-  try {
-    const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(query)}&gsrlimit=9&prop=imageinfo&iiprop=url&format=json&origin=*`;
-    const res = await fetch(wikiUrl);
-    if (res.ok) {
-      const data = await res.json();
-      const pages = data.query?.pages ? Object.values(data.query.pages) : [];
-      for (const p of pages) {
-        const imgUrl = p.imageinfo?.[0]?.url;
-        if (imgUrl && /\.(jpg|jpeg|png|webp)$/i.test(imgUrl)) {
-          results.push({ url: imgUrl, title: p.title.replace(/^File:/, "") });
-        }
+  // Translate Korean query to English for far better global stock/CC photo matches
+  let searchTerm = query;
+  if (/[ㄱ-ㅎ가-힣]/.test(query)) {
+    try {
+      const trRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(query)}`);
+      if (trRes.ok) {
+        const trData = await trRes.json();
+        const translated = trData?.[0]?.[0]?.[0];
+        if (translated) searchTerm = translated;
       }
-    }
-  } catch (e) {}
-
-  // Fallback high-res curated photos if Wikimedia returns too few
-  if (results.length < 3) {
-    const fallbackSeeds = [
-      `https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80`,
-      `https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&auto=format&fit=crop&q=80`,
-      `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80`,
-      `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop&q=80`,
-      `https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&auto=format&fit=crop&q=80`,
-      `https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop&q=80`
-    ];
-    fallbackSeeds.forEach((u, idx) => {
-      results.push({ url: u, title: `${query} 추천 이미지 ${idx + 1}` });
-    });
+    } catch (e) {}
   }
 
+  const results = [];
+  const seenUrls = new Set();
+
+  const addResult = (url, title) => {
+    if (!url || seenUrls.has(url)) return;
+    seenUrls.add(url);
+    results.push({ url, title: title || query });
+  };
+
+  // Fetch Openverse & Wikimedia Commons in parallel
+  await Promise.allSettled([
+    (async () => {
+      const ovRes = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(searchTerm)}&page_size=9`);
+      if (ovRes.ok) {
+        const ovData = await ovRes.json();
+        for (const item of (ovData.results || [])) {
+          if (item.url) addResult(item.url, item.title);
+        }
+      }
+    })(),
+    (async () => {
+      const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(searchTerm)}&gsrlimit=9&prop=imageinfo&iiprop=url&format=json&origin=*`;
+      const res = await fetch(wikiUrl);
+      if (res.ok) {
+        const data = await res.json();
+        const pages = data.query?.pages ? Object.values(data.query.pages) : [];
+        for (const p of pages) {
+          const imgUrl = p.imageinfo?.[0]?.url;
+          if (imgUrl && /\.(jpg|jpeg|png|webp)$/i.test(imgUrl)) {
+            addResult(imgUrl, p.title.replace(/^File:/, ""));
+          }
+        }
+      }
+    })()
+  ]);
+
   searchLoading.classList.add("hidden");
-  searchResultsGrid.innerHTML = results.slice(0, 9).map(item => `
-    <div onclick="window.selectWebMedia('${item.url.replace(/'/g, "\\'")}', '${item.title.replace(/'/g, "\\'")}')" class="group relative aspect-video rounded-xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500 cursor-pointer transition">
-      <img src="${item.url}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" />
-      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-        <span class="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold">선택하기</span>
+
+  if (results.length === 0) {
+    searchResultsGrid.innerHTML = `
+      <div class="col-span-2 sm:col-span-3 text-center py-8 text-xs text-slate-400">
+        "${query}"에 대한 검색 결과가 없습니다. 다른 키워드(예: 영문 또는 간단한 단어)로 검색해 보세요.
       </div>
-    </div>
-  `).join("");
+    `;
+    return;
+  }
+
+  searchResultsGrid.innerHTML = results.slice(0, 12).map(item => {
+    const safeUrl = item.url.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    const safeTitle = item.title.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    return `
+      <div onclick="window.selectWebMedia('${safeUrl}', '${safeTitle}')" class="group relative aspect-video rounded-xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-purple-500 cursor-pointer transition">
+        <img src="${item.url}" alt="${safeTitle}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" loading="lazy" onerror="this.parentElement.style.display='none'" />
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+          <span class="px-2.5 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold">선택하기</span>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
 async function selectWebMedia(url, title) {
