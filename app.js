@@ -733,18 +733,6 @@ async function toggleDreamComplete(dreamId) {
     } catch (err) {}
   }
 }
-  updateCounts();
-  renderDreams();
-
-  if (d.is_completed && window.confetti) {
-    window.confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    showToast("축하합니다! 꿈을 현실로 이루어내셨습니다! 🎉✨");
-  }
-
-  try {
-    await fetch(`/api/dreams/${dreamId}/toggle-complete`, { method: "POST" });
-  } catch (err) {}
-}
 
 // --- Media Management ---
 
