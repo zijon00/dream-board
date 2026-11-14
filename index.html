@@ -40,13 +40,13 @@
 
   <!-- Header -->
   <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-amber-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
-          <i class="fa-solid fa-wand-magic-sparkles text-xl text-white"></i>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
+      <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-amber-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+          <i class="fa-solid fa-wand-magic-sparkles text-base sm:text-xl text-white"></i>
         </div>
-        <div>
-          <h1 class="text-xl sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent">
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent truncate">
             나의 생생한 꿈보드
           </h1>
           <p class="text-xs text-slate-400 hidden sm:block">"상상할 수 있다면 이미 현실이 되기 시작한 것이다"</p>
@@ -54,14 +54,14 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
         <!-- Auth Container -->
         <div id="auth-container" class="flex items-center">
-          <button id="btn-login" onclick="window.doGoogleLoginFallback()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center space-x-2">
+          <button id="btn-login" onclick="window.doGoogleLoginFallback()" class="px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center space-x-1.5 sm:space-x-2">
             <i class="fa-brands fa-google text-amber-400"></i>
             <span>로그인</span>
           </button>
-          <div id="user-profile" class="hidden items-center space-x-2">
+          <div id="user-profile" class="hidden items-center space-x-1.5 sm:space-x-2">
             <img id="user-avatar" class="w-8 h-8 rounded-full border border-purple-500/50" src="" alt="User" />
             <span id="user-name" class="text-xs font-semibold text-slate-300 hidden md:inline"></span>
             <button id="btn-logout" class="p-2 text-slate-400 hover:text-rose-400 text-xs transition" title="로그아웃">
@@ -70,11 +70,12 @@
           </div>
         </div>
 
-        <button id="btn-slideshow" class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 sm:space-x-2 shadow-sm">
+        <button id="btn-slideshow" class="px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 sm:space-x-2 shadow-sm">
           <i class="fa-solid fa-play"></i>
-          <span class="hidden md:inline">시각화 명상 모드</span>
+          <span class="hidden sm:inline">시각화 명상 모드</span>
+          <span class="sm:hidden">명상</span>
         </button>
-        <button id="btn-add-dream" class="px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-purple-600/30 transition flex items-center space-x-1.5 sm:space-x-2">
+        <button id="btn-add-dream" class="hidden sm:flex px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-bold shadow-lg shadow-purple-600/30 transition items-center space-x-2">
           <i class="fa-solid fa-plus"></i>
           <span>새 꿈 등록</span>
         </button>
@@ -82,153 +83,165 @@
     </div>
 
     <!-- Category Tabs & Stats Filter -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/40">
-      <!-- Tabs -->
-      <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-        <button class="cat-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition active-tab bg-purple-600 text-white" data-cat="ALL">
-          전체 (<span id="count-all">0</span>)
-        </button>
-        <button class="cat-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="DO">
-          🏃 하고 싶은 것 (<span id="count-do">0</span>)
-        </button>
-        <button class="cat-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="HAVE">
-          💎 갖고 싶은 것 (<span id="count-have">0</span>)
-        </button>
-        <button class="cat-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="GIVE">
-          💝 해주고 싶은 것 (<span id="count-give">0</span>)
-        </button>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-800/40">
+      <!-- Horizontally Scrollable Tabs on Mobile -->
+      <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div class="inline-flex items-center space-x-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 min-w-max">
+          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition active-tab bg-purple-600 text-white" data-cat="ALL">
+            전체 (<span id="count-all">0</span>)
+          </button>
+          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="DO">
+            🏃 하고 싶은 것 (<span id="count-do">0</span>)
+          </button>
+          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="HAVE">
+            💎 갖고 싶은 것 (<span id="count-have">0</span>)
+          </button>
+          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="GIVE">
+            💝 해주고 싶은 것 (<span id="count-give">0</span>)
+          </button>
+        </div>
       </div>
 
       <!-- Right controls: Total Budget, Completed Filter & View toggle -->
-      <div class="flex items-center space-x-3">
-        <!-- Total Budget Summary Badge -->
-        <div class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300 text-xs font-semibold">
+      <div class="flex items-center justify-between sm:justify-end gap-2 sm:space-x-3">
+        <!-- Total Budget Summary Badge (Visible on Mobile & Desktop!) -->
+        <div class="flex items-center space-x-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300 text-[11px] sm:text-xs font-semibold">
           <i class="fa-solid fa-sack-dollar text-amber-400"></i>
-          <span>총 필요 예산:</span>
+          <span class="hidden xs:inline">총 필요 예산:</span>
+          <span class="xs:hidden">총 예산:</span>
           <span id="total-budget-sum" class="font-bold text-amber-200">0원</span>
         </div>
-        <div class="h-4 w-px bg-slate-800 hidden sm:block"></div>
-        <label class="flex items-center space-x-2 text-xs sm:text-sm text-slate-400 cursor-pointer">
-          <input type="checkbox" id="filter-completed" class="rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-0">
-          <span>달성 완료만 보기</span>
-        </label>
-        <div class="h-4 w-px bg-slate-800"></div>
-        <div class="flex items-center bg-slate-900/90 rounded-lg p-1 border border-slate-800">
-          <button id="view-grid" class="p-1.5 px-2.5 rounded text-purple-400 bg-slate-800 text-xs">
-            <i class="fa-solid fa-border-all"></i>
-          </button>
-          <button id="view-list" class="p-1.5 px-2.5 rounded text-slate-400 hover:text-white text-xs">
-            <i class="fa-solid fa-list"></i>
-          </button>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <label class="flex items-center space-x-1.5 sm:space-x-2 text-[11px] sm:text-sm text-slate-400 cursor-pointer">
+            <input type="checkbox" id="filter-completed" class="rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-0">
+            <span>달성 완료만</span>
+          </label>
+          <div class="h-4 w-px bg-slate-800"></div>
+          <div class="flex items-center bg-slate-900/90 rounded-lg p-0.5 sm:p-1 border border-slate-800">
+            <button id="view-grid" class="p-1.5 px-2.5 rounded text-purple-400 bg-slate-800 text-xs">
+              <i class="fa-solid fa-border-all"></i>
+            </button>
+            <button id="view-list" class="p-1.5 px-2.5 rounded text-slate-400 hover:text-white text-xs">
+              <i class="fa-solid fa-list"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+  <main class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 pb-28 sm:pb-12 flex-1 w-full">
     <!-- Grid Board -->
-    <div id="dreams-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div id="dreams-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       <!-- Dream cards inserted dynamically -->
     </div>
 
     <!-- Empty State -->
-    <div id="empty-state" class="hidden text-center py-24">
-      <div class="w-20 h-20 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-3xl mb-4">
+    <div id="empty-state" class="hidden text-center py-20 sm:py-24 px-4">
+      <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl sm:text-3xl mb-4">
         <i class="fa-regular fa-compass"></i>
       </div>
-      <h3 class="text-lg font-bold text-slate-300">등록된 꿈이 없습니다</h3>
-      <p class="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
+      <h3 class="text-base sm:text-lg font-bold text-slate-300">등록된 꿈이 없습니다</h3>
+      <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
         마음속에 품고 있던 하고 싶은 것, 갖고 싶은 것, 해주고 싶은 것을 첫 번째 카드로 작성해 보세요!
       </p>
-      <button onclick="document.getElementById('btn-add-dream').click()" class="mt-5 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition">
+      <button onclick="document.getElementById('btn-add-dream').click()" class="mt-5 px-5 py-3 rounded-xl bg-purple-600 active:scale-95 hover:bg-purple-500 text-white font-semibold text-sm transition">
         지금 첫 꿈 등록하기
       </button>
     </div>
   </main>
 
+  <!-- Mobile Floating Action Button (FAB) -->
+  <button onclick="document.getElementById('btn-add-dream').click()" class="sm:hidden fixed bottom-6 right-5 z-40 px-5 py-3.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 active:scale-95 text-white text-sm font-bold shadow-2xl shadow-purple-600/50 border border-purple-400/30 flex items-center space-x-2 transition">
+    <i class="fa-solid fa-plus text-base"></i>
+    <span>새 꿈 등록</span>
+  </button>
+
   <!-- Create/Edit Dream Modal -->
-  <div id="modal-dream" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
-    <div class="glass-modal w-full max-w-2xl rounded-2xl p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto shadow-2xl">
-      <button id="modal-close" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+  <div id="modal-dream" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+    <div class="glass-modal w-full max-w-2xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-8 pb-safe relative max-h-[92vh] overflow-y-auto shadow-2xl">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
         <i class="fa-solid fa-xmark"></i>
       </button>
-      <h2 id="modal-title" class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+      <h2 id="modal-title" class="text-lg sm:text-xl font-bold text-white mb-5 sm:mb-6 flex items-center space-x-2">
         <span class="text-purple-400"><i class="fa-solid fa-sparkles"></i></span>
         <span>꿈 등록하기</span>
       </h2>
 
-      <form id="dream-form" class="space-y-5">
+      <form id="dream-form" class="space-y-4 sm:space-y-5">
         <input type="hidden" id="form-dream-id" />
 
         <!-- Category Selector -->
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">카테고리</label>
-          <div class="grid grid-cols-3 gap-2.5">
-            <label class="flex items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40">
+          <div class="grid grid-cols-3 gap-2">
+            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="DO" checked class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold">🏃 하고 싶은 것</span>
+              <span class="text-xs sm:text-sm font-semibold leading-tight">🏃<br class="sm:hidden" /> 하고 싶은 것</span>
             </label>
-            <label class="flex items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40">
+            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="HAVE" class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold">💎 갖고 싶은 것</span>
+              <span class="text-xs sm:text-sm font-semibold leading-tight">💎<br class="sm:hidden" /> 갖고 싶은 것</span>
             </label>
-            <label class="flex items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40">
+            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="GIVE" class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold">💝 해주고 싶은 것</span>
+              <span class="text-xs sm:text-sm font-semibold leading-tight">💝<br class="sm:hidden" /> 해주고 싶은 것</span>
             </label>
           </div>
         </div>
 
         <!-- Title -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">소망 제목 *</label>
-          <input type="text" id="form-title" required placeholder="예: 스위스 융프라우에서 오로라 감상하기" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-sm text-white" />
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">소망 제목 *</label>
+          <input type="text" id="form-title" required placeholder="예: 스위스 융프라우에서 오로라 감상하기" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-base sm:text-sm text-white" />
         </div>
 
         <!-- Vivid Description -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
             생생한 묘사 (Vivid Description)
-            <span class="text-slate-500 font-normal text-[11px] ml-1">이루어졌을 때 눈앞에 무엇이 보이고 어떤 기분인가요?</span>
+            <span class="text-slate-500 font-normal text-[11px] block sm:inline sm:ml-1">이루어졌을 때 눈앞에 무엇이 보이고 어떤 기분인가요?</span>
           </label>
-          <textarea id="form-vivid-desc" rows="3" placeholder="예: 알프스의 새하얀 설산을 바라보며 따뜻한 핫초코를 손에 쥐고, 마음 깊은 곳에서 올라오는 평온과 자유로움을 만끽한다." class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-sm text-white leading-relaxed"></textarea>
+          <textarea id="form-vivid-desc" rows="3" placeholder="예: 알프스의 새하얀 설산을 바라보며 따뜻한 핫초코를 손에 쥐고, 마음 깊은 곳에서 올라오는 평온과 자유로움을 만끽한다." class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-base sm:text-sm text-white leading-relaxed"></textarea>
         </div>
 
         <!-- Target Date, Deadline, Estimated Budget -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
               <i class="fa-regular fa-clock text-purple-400 mr-1"></i>목표 달성 시한 (D-Day)
             </label>
-            <input type="date" id="form-deadline" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white" />
+            <input type="date" id="form-deadline" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
             <span class="text-[10px] text-slate-500 mt-1 block">구체적인 마감일(D-Day)을 설정하면 실시간 카운트다운이 표시됩니다.</span>
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
               <i class="fa-solid fa-won-sign text-amber-400 mr-1"></i>필요 예상 예산 (원)
             </label>
-            <input type="number" id="form-budget" min="0" step="10000" placeholder="예: 15000000" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white" />
-            <span id="form-budget-korean" class="text-[10px] text-amber-400/90 mt-1 block">0원</span>
+            <input type="number" id="form-budget" min="0" step="10000" placeholder="예: 15000000" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+            <span id="form-budget-korean" class="text-[11px] font-semibold text-amber-400/90 mt-1 block">0원</span>
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">예산 세부 내역 / 자금 마련 계획</label>
-            <input type="text" id="form-budget-notes" placeholder="예: 매월 100만원씩 저축, 비즈니스 항공권 800만..." class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white" />
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">예산 세부 내역 / 자금 마련 계획</label>
+            <input type="text" id="form-budget-notes" placeholder="예: 매월 100만원씩 저축..." class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">다짐의 한마디 (Affirmation)</label>
-            <input type="text" id="form-affirmation" placeholder="예: 나는 전 세계를 자유롭게 누비는 존재다" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-sm text-white" />
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">다짐의 한마디 (Affirmation)</label>
+            <input type="text" id="form-affirmation" placeholder="예: 나는 전 세계를 자유롭게 누비는 존재다" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
           </div>
         </div>
 
-        <div class="flex justify-end space-x-3 pt-3 border-t border-slate-800">
-          <button type="button" id="modal-cancel" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition">
+        <div class="flex space-x-3 pt-4 border-t border-slate-800">
+          <button type="button" id="modal-cancel" class="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition">
             취소
           </button>
-          <button type="submit" class="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-lg shadow-purple-600/30 transition">
+          <button type="submit" class="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-lg shadow-purple-600/30 transition">
             저장하기
           </button>
         </div>
@@ -237,32 +250,33 @@
   </div>
 
   <!-- Media Manager Modal (3-Tab Pipeline & History) -->
-  <div id="modal-media" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-    <div class="glass-modal w-full max-w-3xl rounded-2xl p-6 sm:p-8 relative max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
-      <button id="media-modal-close" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+  <div id="modal-media" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-modal w-full max-w-3xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-8 pb-safe relative max-h-[92vh] overflow-y-auto shadow-2xl flex flex-col">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="media-modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <div class="mb-5">
+      <div class="mb-4 sm:mb-5 pr-8">
         <span id="media-modal-badge" class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-800">
           DO
         </span>
-        <h2 id="media-modal-dream-title" class="text-xl font-bold text-white mt-2">
+        <h2 id="media-modal-dream-title" class="text-lg sm:text-xl font-bold text-white mt-2 truncate">
           꿈 제목
         </h2>
         <p class="text-xs text-slate-400 mt-1">이 꿈을 생생하게 일깨워줄 사진이나 영상을 설정하세요</p>
       </div>
 
-      <!-- 3 Tabs Navigation -->
-      <div class="flex border-b border-slate-800 space-x-4 mb-6">
-        <button class="media-tab py-2.5 text-sm font-semibold border-b-2 border-purple-500 text-purple-300" data-tab="tab-upload">
-          1. 내 사진 / 영상 직접 올리기
+      <!-- 3 Tabs Navigation (Horizontally scrollable on small phones) -->
+      <div class="flex border-b border-slate-800 space-x-4 mb-5 overflow-x-auto no-scrollbar whitespace-nowrap">
+        <button class="media-tab py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-purple-500 text-purple-300 shrink-0" data-tab="tab-upload">
+          1. 내 사진 / 영상 올리기
         </button>
-        <button class="media-tab py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white" data-tab="tab-search">
-          2. 인터넷에서 고화질 찾기
+        <button class="media-tab py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white shrink-0" data-tab="tab-search">
+          2. 인터넷 고화질 찾기
         </button>
-        <button class="media-tab py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white" data-tab="tab-ai">
-          3. AI 상상 및 인물 합성
+        <button class="media-tab py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-white shrink-0" data-tab="tab-ai">
+          3. AI 상상 및 합성
         </button>
       </div>
 
@@ -280,8 +294,8 @@
         <div class="pt-2">
           <label class="block text-xs font-bold text-slate-400 mb-2">또는 웹 이미지 / 유튜브 영상 링크 입력</label>
           <div class="flex space-x-2">
-            <input type="url" id="direct-url-input" placeholder="https://..." class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:border-purple-500 outline-none" />
-            <button id="btn-save-direct-url" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition">
+            <input type="url" id="direct-url-input" placeholder="https://..." class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white focus:border-purple-500 outline-none" />
+            <button id="btn-save-direct-url" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition shrink-0">
               추가
             </button>
           </div>
@@ -291,8 +305,8 @@
       <!-- Tab 2: Zero-Config Search -->
       <div id="tab-search" class="tab-content hidden space-y-4">
         <div class="flex space-x-2">
-          <input type="text" id="search-query-input" placeholder="검색어 입력 (예: 스위스 알프스, 하와이 해변...)" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white focus:border-purple-500 outline-none" />
-          <button id="btn-search-media" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center space-x-1.5">
+          <input type="text" id="search-query-input" placeholder="검색어 입력 (예: 스위스 알프스...)" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white focus:border-purple-500 outline-none" />
+          <button id="btn-search-media" class="px-4 sm:px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shrink-0">
             <i class="fa-solid fa-magnifying-glass"></i>
             <span>검색</span>
           </button>
@@ -309,10 +323,10 @@
       </div>
 
       <!-- Tab 3: Gemini AI Generation & Portrait Synthesis -->
-      <div id="tab-ai" class="tab-content hidden space-y-6">
+      <div id="tab-ai" class="tab-content hidden space-y-4 sm:space-y-6">
         <!-- Sub Mode A: Pure AI Vision -->
         <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 class="text-sm font-bold text-purple-300 flex items-center space-x-1.5">
                 <i class="fa-solid fa-wand-sparkles"></i>
@@ -320,7 +334,7 @@
               </h4>
               <p class="text-xs text-slate-400 mt-0.5">내가 묘사한 소망 문장을 바탕으로 Gemini AI가 한 폭의 그림을 완성합니다.</p>
             </div>
-            <button id="btn-ai-generate" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center space-x-1.5">
+            <button id="btn-ai-generate" class="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center justify-center space-x-1.5 shrink-0">
               <span>상상도 생성</span>
             </button>
           </div>
@@ -335,10 +349,10 @@
           <p class="text-xs text-slate-400">
             내 얼굴이나 가족 사진을 올리면, AI가 인물의 특징을 살려 꿈꾸는 장소(하와이 해변, 서재 등)에 자연스럽게 합성해 줍니다.
           </p>
-          <div class="space-y-2">
-            <input type="file" id="synth-ref-file" accept="image/*" class="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-950 file:text-purple-300 hover:file:bg-purple-900" />
-            <input type="text" id="synth-custom-prompt" placeholder="추가 요청사항 (예: 부모님이 환하게 웃으시며 해변 선베드에 누워계신 모습)" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white outline-none focus:border-amber-400" />
-            <button id="btn-ai-synthesize" class="mt-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-bold transition flex items-center space-x-1.5">
+          <div class="space-y-2.5">
+            <input type="file" id="synth-ref-file" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-950 file:text-purple-300 hover:file:bg-purple-900" />
+            <input type="text" id="synth-custom-prompt" placeholder="추가 요청사항 (예: 부모님이 환하게 웃으시며...)" class="w-full px-3 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-base sm:text-xs text-white outline-none focus:border-amber-400" />
+            <button id="btn-ai-synthesize" class="w-full sm:w-auto mt-2 px-4 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-bold transition flex items-center justify-center space-x-1.5">
               <i class="fa-solid fa-sparkles"></i>
               <span>인물 합성 시작</span>
             </button>
@@ -416,7 +430,7 @@
   </div>
 
   <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-6 right-6 z-50 hidden px-5 py-3 rounded-xl bg-slate-900 border border-purple-500/50 text-white text-xs sm:text-sm font-semibold shadow-2xl flex items-center space-x-2">
+  <div id="toast" class="fixed bottom-24 left-4 right-4 sm:left-auto sm:bottom-6 sm:right-6 z-50 hidden px-5 py-3.5 rounded-xl bg-slate-900/95 backdrop-blur border border-purple-500/50 text-white text-xs sm:text-sm font-semibold shadow-2xl flex items-center justify-center sm:justify-start space-x-2">
     <i class="fa-solid fa-circle-check text-purple-400"></i>
     <span id="toast-msg">알림 메시지</span>
   </div>
