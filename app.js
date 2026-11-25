@@ -142,6 +142,16 @@ const userProfile = document.getElementById("user-profile");
 const userAvatar = document.getElementById("user-avatar");
 const userName = document.getElementById("user-name");
 
+// Budget Planner Elements
+const btnBudgetPlanner = document.getElementById("btn-budget-planner");
+const modalBudgetPlanner = document.getElementById("modal-budget-planner");
+const budgetModalClose = document.getElementById("budget-modal-close");
+const budgetModalCancel = document.getElementById("budget-modal-cancel");
+const budgetListContainer = document.getElementById("budget-list-container");
+const plannerTotalBudget = document.getElementById("planner-total-budget");
+const plannerOnlyUnset = document.getElementById("planner-only-unset");
+const btnSaveAllBudgets = document.getElementById("btn-save-all-budgets");
+
 // Init function (invoked at bottom after all bindings)
 function initApp() {
   setupAuth();
@@ -360,6 +370,13 @@ function setupEventListeners() {
   slidePlayPause.addEventListener("click", toggleSlidePlay);
   slidePrev.addEventListener("click", () => changeSlide(-1));
   slideNext.addEventListener("click", () => changeSlide(1));
+
+  // Budget Planner Modal
+  btnBudgetPlanner.addEventListener("click", openBudgetPlannerModal);
+  budgetModalClose.addEventListener("click", closeBudgetPlannerModal);
+  budgetModalCancel.addEventListener("click", closeBudgetPlannerModal);
+  plannerOnlyUnset.addEventListener("change", renderBudgetPlannerList);
+  btnSaveAllBudgets.addEventListener("click", saveAllBudgets);
 }
 
 // --- Fetch & Render ---
@@ -591,13 +608,6 @@ function renderDreamCard(dream) {
 // --- Dream Add / Edit ---
 
 function openDreamModal(dreamId = null) {
-  const budgetInput = document.getElementById("form-budget");
-  const budgetKorean = document.getElementById("form-budget-korean");
-
-  budgetInput.oninput = () => {
-    budgetKorean.textContent = formatKoreanCurrency(budgetInput.value);
-  };
-
   if (dreamId) {
     const d = dreams.find(item => item.id === dreamId);
     if (!d) return;
@@ -607,18 +617,12 @@ function openDreamModal(dreamId = null) {
     document.getElementById("form-title").value = d.title;
     document.getElementById("form-vivid-desc").value = d.vivid_description || "";
     document.getElementById("form-deadline").value = d.deadline || "";
-    document.getElementById("form-budget").value = d.estimated_budget || "";
-    budgetKorean.textContent = formatKoreanCurrency(d.estimated_budget || 0);
-    document.getElementById("form-budget-notes").value = d.budget_notes || "";
     document.getElementById("form-affirmation").value = d.affirmation || "";
   } else {
     formDreamId.value = "";
     modalTitle.innerHTML = `<span class="text-purple-400"><i class="fa-solid fa-wand-magic-sparkles"></i></span> <span>꿈 등록하기</span>`;
     dreamForm.reset();
     document.getElementById("form-deadline").value = "";
-    document.getElementById("form-budget").value = "";
-    document.getElementById("form-budget-notes").value = "";
-    budgetKorean.textContent = "0원";
   }
   modalDream.classList.remove("hidden");
 }
@@ -635,19 +639,17 @@ async function handleDreamFormSubmit(e) {
   const title = document.getElementById("form-title").value.trim();
   const vivid_description = document.getElementById("form-vivid-desc").value.trim();
   const deadline = document.getElementById("form-deadline").value.trim();
-  const rawBudget = document.getElementById("form-budget").value.trim();
-  const estimated_budget = rawBudget ? parseInt(rawBudget, 10) : 0;
-  const budget_notes = document.getElementById("form-budget-notes").value.trim();
   const affirmation = document.getElementById("form-affirmation").value.trim();
 
+  const existingDream = dreamId ? dreams.find(d => d.id === dreamId) : null;
   const payload = {
     category,
     title,
     vivid_description,
     target_date: deadline,
     deadline,
-    estimated_budget,
-    budget_notes,
+    estimated_budget: existingDream ? (existingDream.estimated_budget || 0) : 0,
+    budget_notes: existingDream ? (existingDream.budget_notes || "") : "",
     affirmation
   };
 
@@ -1127,6 +1129,179 @@ function showToast(msg) {
   }, 3500);
 }
 
+// --- Budget Planner & Price Search ---
+
+let plannerDraftBudgets = {};
+
+function openBudgetPlannerModal() {
+  plannerDraftBudgets = {};
+  dreams.forEach(d => {
+    plannerDraftBudgets[d.id] = {
+      estimated_budget: d.estimated_budget || 0,
+      budget_notes: d.budget_notes || ""
+    };
+  });
+  renderBudgetPlannerList();
+  modalBudgetPlanner.classList.remove("hidden");
+}
+
+function closeBudgetPlannerModal() {
+  modalBudgetPlanner.classList.add("hidden");
+}
+
+function updatePlannerTotalPreview() {
+  const total = Object.values(plannerDraftBudgets).reduce(
+    (sum, item) => sum + (parseInt(item.estimated_budget, 10) || 0),
+    0
+  );
+  if (plannerTotalBudget) {
+    plannerTotalBudget.textContent = formatKoreanCurrency(total);
+  }
+}
+
+function onPlannerBudgetInput(dreamId, value) {
+  const num = value ? Math.max(0, parseInt(value, 10) || 0) : 0;
+  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, budget_notes: "" };
+  plannerDraftBudgets[dreamId].estimated_budget = num;
+  const label = document.getElementById(`planner-korean-${dreamId}`);
+  if (label) label.textContent = formatKoreanCurrency(num);
+  updatePlannerTotalPreview();
+}
+
+function onPlannerNotesInput(dreamId, value) {
+  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, budget_notes: "" };
+  plannerDraftBudgets[dreamId].budget_notes = value;
+}
+
+function searchPriceForDream(dreamTitle, engine) {
+  if (!dreamTitle) return;
+  if (engine === "naver") {
+    window.open(`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(dreamTitle)}`, "_blank", "noopener");
+  } else {
+    window.open(`https://www.google.com/search?q=${encodeURIComponent(dreamTitle + " 가격 비용 예산")}`, "_blank", "noopener");
+  }
+}
+
+function renderBudgetPlannerList() {
+  const onlyUnset = plannerOnlyUnset && plannerOnlyUnset.checked;
+  const list = dreams.filter(d => {
+    if (!onlyUnset) return true;
+    const draft = plannerDraftBudgets[d.id];
+    const amt = draft ? draft.estimated_budget : (d.estimated_budget || 0);
+    return !amt || amt <= 0;
+  });
+
+  updatePlannerTotalPreview();
+
+  if (dreams.length === 0) {
+    budgetListContainer.innerHTML = `
+      <div class="text-center py-10 text-slate-400 text-xs sm:text-sm">
+        아직 작성된 꿈이 없습니다. 먼저 꿈을 자유롭게 등록해 보세요!
+      </div>
+    `;
+    return;
+  }
+
+  if (list.length === 0) {
+    budgetListContainer.innerHTML = `
+      <div class="text-center py-10 text-amber-300/80 text-xs sm:text-sm">
+        모든 꿈에 예산이 입력되어 있습니다! ✨
+      </div>
+    `;
+    return;
+  }
+
+  const catLabels = {
+    DO: { label: "🏃 하고 싶은 것", cls: "bg-indigo-950 text-indigo-300 border-indigo-800" },
+    HAVE: { label: "💎 갖고 싶은 것", cls: "bg-purple-950 text-purple-300 border-purple-800" },
+    GIVE: { label: "💝 해주고 싶은 것", cls: "bg-rose-950 text-rose-300 border-rose-800" }
+  };
+
+  budgetListContainer.innerHTML = list.map(d => {
+    const cat = catLabels[d.category] || catLabels.DO;
+    const draft = plannerDraftBudgets[d.id] || { estimated_budget: d.estimated_budget || 0, budget_notes: d.budget_notes || "" };
+    const safeTitle = d.title.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    const valStr = draft.estimated_budget > 0 ? draft.estimated_budget : "";
+
+    return `
+      <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center space-x-2 min-w-0">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cat.cls} shrink-0">${cat.label}</span>
+            <h4 class="text-sm font-bold text-white truncate">${d.title}</h4>
+          </div>
+          <!-- Price/Cost Search Buttons -->
+          <div class="flex items-center space-x-1.5 shrink-0">
+            <button type="button" onclick="window.searchPriceForDream('${safeTitle}', 'naver')" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/50 text-[11px] font-semibold transition flex items-center space-x-1">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <span>네이버 가격</span>
+            </button>
+            <button type="button" onclick="window.searchPriceForDream('${safeTitle}', 'google')" class="px-2.5 py-1.5 rounded-lg bg-sky-950/70 hover:bg-sky-900 text-sky-300 border border-sky-700/50 text-[11px] font-semibold transition flex items-center space-x-1">
+              <i class="fa-brands fa-google"></i>
+              <span>구글 비용 검색</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[11px] text-slate-400">예상 금액 (원)</span>
+              <span id="planner-korean-${d.id}" class="text-[11px] font-bold text-amber-300">${formatKoreanCurrency(draft.estimated_budget)}</span>
+            </div>
+            <input type="number" min="0" step="10000" value="${valStr}" placeholder="금액 입력 (예: 1500000)"
+              oninput="window.onPlannerBudgetInput('${d.id}', this.value)"
+              class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-amber-500 outline-none text-base sm:text-sm text-white" />
+          </div>
+          <div>
+            <div class="mb-1">
+              <span class="text-[11px] text-slate-400">예산 메모 / 자금 계획</span>
+            </div>
+            <input type="text" value="${(draft.budget_notes || '').replace(/"/g, '&quot;')}" placeholder="예: 매월 50만 저축, 검색 최저가 기준"
+              oninput="window.onPlannerNotesInput('${d.id}', this.value)"
+              class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-amber-500 outline-none text-base sm:text-sm text-white" />
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function saveAllBudgets() {
+  const changedDreams = [];
+  dreams = dreams.map(d => {
+    const draft = plannerDraftBudgets[d.id];
+    if (!draft) return d;
+    const newBudget = parseInt(draft.estimated_budget, 10) || 0;
+    const newNotes = (draft.budget_notes || "").trim();
+    if (newBudget !== (d.estimated_budget || 0) || newNotes !== (d.budget_notes || "")) {
+      const updated = {
+        ...d,
+        estimated_budget: newBudget,
+        budget_notes: newNotes,
+        updated_at: new Date().toISOString()
+      };
+      changedDreams.push(updated);
+      return updated;
+    }
+    return d;
+  });
+
+  saveDreamsLocally();
+  updateCounts();
+  renderDreams();
+  closeBudgetPlannerModal();
+  showToast("모든 꿈의 예산이 깔끔하게 정리되었습니다! 💰✨");
+
+  if (currentUser && changedDreams.length > 0) {
+    try {
+      await Promise.all(
+        changedDreams.map(d => setDoc(doc(db, "users", currentUser.uid, "dreams", d.id), d, { merge: true }))
+      );
+    } catch (err) {}
+  }
+}
+
 // Expose handlers globally for inline onclick templates inside ES module
 window.openDreamModal = openDreamModal;
 window.openMediaModal = openMediaModal;
@@ -1134,6 +1309,10 @@ window.toggleDreamComplete = toggleDreamComplete;
 window.deleteDream = deleteDream;
 window.setPrimaryMedia = setPrimaryMedia;
 window.selectWebMedia = selectWebMedia;
+window.openBudgetPlannerModal = openBudgetPlannerModal;
+window.searchPriceForDream = searchPriceForDream;
+window.onPlannerBudgetInput = onPlannerBudgetInput;
+window.onPlannerNotesInput = onPlannerNotesInput;
 
 // Start application
 if (document.readyState === "loading") {

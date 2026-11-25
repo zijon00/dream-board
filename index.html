@@ -102,15 +102,15 @@
         </div>
       </div>
 
-      <!-- Right controls: Total Budget, Completed Filter & View toggle -->
+      <!-- Right controls: Total Budget & Budget Planner, Completed Filter & View toggle -->
       <div class="flex items-center justify-between sm:justify-end gap-2 sm:space-x-3">
-        <!-- Total Budget Summary Badge (Visible on Mobile & Desktop!) -->
-        <div class="flex items-center space-x-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-300 text-[11px] sm:text-xs font-semibold">
+        <!-- Interactive Total Budget & Budget Planner Button -->
+        <button id="btn-budget-planner" class="flex items-center space-x-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-amber-950/50 hover:bg-amber-900/60 active:scale-95 border border-amber-500/40 text-amber-300 text-[11px] sm:text-xs font-semibold transition cursor-pointer shadow-sm">
           <i class="fa-solid fa-sack-dollar text-amber-400"></i>
-          <span class="hidden xs:inline">총 필요 예산:</span>
-          <span class="xs:hidden">총 예산:</span>
+          <span>총 예산:</span>
           <span id="total-budget-sum" class="font-bold text-amber-200">0원</span>
-        </div>
+          <span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[10px] font-bold border border-amber-500/30">예산 정리</span>
+        </button>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
           <label class="flex items-center space-x-1.5 sm:space-x-2 text-[11px] sm:text-sm text-slate-400 cursor-pointer">
@@ -208,7 +208,7 @@
           <textarea id="form-vivid-desc" rows="3" placeholder="예: 알프스의 새하얀 설산을 바라보며 따뜻한 핫초코를 손에 쥐고, 마음 깊은 곳에서 올라오는 평온과 자유로움을 만끽한다." class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-base sm:text-sm text-white leading-relaxed"></textarea>
         </div>
 
-        <!-- Target Date, Deadline, Estimated Budget -->
+        <!-- Target Date & Affirmation (Pure Dreaming Mode - No budget interruption!) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
@@ -218,23 +218,14 @@
             <span class="text-[10px] text-slate-500 mt-1 block">구체적인 마감일(D-Day)을 설정하면 실시간 카운트다운이 표시됩니다.</span>
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
-              <i class="fa-solid fa-won-sign text-amber-400 mr-1"></i>필요 예상 예산 (원)
-            </label>
-            <input type="number" id="form-budget" min="0" step="10000" placeholder="예: 15000000" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
-            <span id="form-budget-korean" class="text-[11px] font-semibold text-amber-400/90 mt-1 block">0원</span>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">예산 세부 내역 / 자금 마련 계획</label>
-            <input type="text" id="form-budget-notes" placeholder="예: 매월 100만원씩 저축..." class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
-          </div>
-          <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">다짐의 한마디 (Affirmation)</label>
             <input type="text" id="form-affirmation" placeholder="예: 나는 전 세계를 자유롭게 누비는 존재다" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
           </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-amber-300/90 text-[11px] flex items-center space-x-2">
+          <i class="fa-solid fa-lightbulb text-amber-400 shrink-0"></i>
+          <span>먼저 꿈을 마음껏 작성하세요! 예상 금액은 나중에 상단 <strong>[예산 정리]</strong>에서 검색과 함께 한눈에 입력할 수 있습니다.</span>
         </div>
 
         <div class="flex space-x-3 pt-4 border-t border-slate-800">
@@ -246,6 +237,54 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Budget Planner & Price Search Modal -->
+  <div id="modal-budget-planner" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-modal w-full max-w-3xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-8 pb-safe relative max-h-[92vh] overflow-y-auto shadow-2xl">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="budget-modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="mb-4 pr-8">
+        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-amber-950 text-amber-300 border border-amber-700/60">
+          💰 BUDGET PLANNER
+        </span>
+        <h2 class="text-lg sm:text-xl font-bold text-white mt-2">
+          꿈 예산 정리 & 시세 검색
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">작성해 둔 꿈 리스트를 불러와 가격/비용을 검색하고 예상 예산을 정리하세요.</p>
+      </div>
+
+      <!-- Summary & Filter Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 mb-4">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-sack-dollar text-amber-400 text-base"></i>
+          <span class="text-xs text-slate-400">총 필요 예산 합계:</span>
+          <span id="planner-total-budget" class="text-sm sm:text-base font-extrabold text-amber-300">0원</span>
+        </div>
+        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+          <input type="checkbox" id="planner-only-unset" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
+          <span>금액 미정(0원)만 보기</span>
+        </label>
+      </div>
+
+      <!-- Dream Budget List -->
+      <div id="budget-list-container" class="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="flex space-x-3 pt-4 mt-5 border-t border-slate-800">
+        <button type="button" id="budget-modal-cancel" class="flex-1 sm:flex-none px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition">
+          닫기
+        </button>
+        <button type="button" id="btn-save-all-budgets" class="flex-1 sm:flex-none px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-sm font-bold shadow-lg shadow-amber-500/20 transition flex items-center justify-center space-x-1.5">
+          <i class="fa-solid fa-check"></i>
+          <span>전체 예산 저장하기</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -445,6 +484,6 @@
     };
   </script>
   <!-- Firebase SDKs (Modular v10) -->
-  <script type="module" src="app.js?v=20261115_08"></script>
+  <script type="module" src="app.js?v=20261125_01"></script>
 </body>
 </html>
