@@ -84,6 +84,10 @@
           <i class="fa-solid fa-book-open"></i>
           <span>미래일기</span>
         </button>
+        <button id="btn-nav-planner-top" class="hidden px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 text-xs sm:text-sm font-semibold transition items-center space-x-1.5">
+          <i class="fa-solid fa-trophy"></i>
+          <span>PIN·플래너</span>
+        </button>
         <button id="btn-slideshow" class="px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 sm:space-x-2 shadow-sm">
           <i class="fa-solid fa-play"></i>
           <span class="hidden sm:inline">시각화 명상</span>
@@ -228,6 +232,157 @@
         <!-- Populated dynamically -->
       </div>
     </section>
+
+    <!-- View 3: Optional Business Planner Module (Amway PIN Roadmap, PF Leg Plan, Weekly 10-Core) -->
+    <section id="section-planner" class="hidden space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-trophy text-amber-400"></i>
+            <span>PIN 로드맵 & 실행 플래너</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">회계연도(9~8월) 레그 플랜과 주간 10코아 노트로 꿈을 현실로 앞당기세요.</p>
+        </div>
+        <button id="btn-planner-back-board" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+          꿈보드로 돌아가기
+        </button>
+      </div>
+
+      <!-- Planner Sub-Tabs -->
+      <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
+        <button class="planner-subtab whitespace-nowrap px-4 py-2 rounded-xl bg-amber-600 text-white text-xs sm:text-sm font-bold transition" data-subtab="pf">
+          📅 회계연도 레그 플랜 (9~8월)
+        </button>
+        <button class="planner-subtab whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-xs sm:text-sm font-bold transition" data-subtab="core10">
+          📝 주간 10코아 노트
+        </button>
+        <button class="planner-subtab whitespace-nowrap px-4 py-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 text-xs sm:text-sm font-bold transition" data-subtab="timeline">
+          🏆 PIN 로드맵 & 꿈 타임라인
+        </button>
+      </div>
+
+      <!-- Sub-Tab 1: Fiscal Year (Sep-Aug) Leg Plan -->
+      <div id="planner-tab-pf" class="planner-subpanel space-y-4">
+        <!-- Fiscal Year Selector & Archive Bar -->
+        <div class="glass-panel rounded-2xl p-4 border border-amber-500/30 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+              <label class="text-xs font-bold text-amber-300">회계연도 선택:</label>
+              <select id="pf-select" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm font-bold text-white outline-none focus:border-amber-500"></select>
+              <span id="pf-status-badge" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">현재 진행 중</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button id="btn-pf-rollover" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition" title="현재 계획을 다음 회계연도로 복사/이월">
+                <i class="fa-solid fa-forward-step mr-1"></i>다음 PF로 이월/변경
+              </button>
+              <button id="btn-pf-save" type="button" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow transition">
+                <i class="fa-solid fa-floppy-disk mr-1"></i>플랜 저장
+              </button>
+            </div>
+          </div>
+
+          <!-- Target PIN & Expected Income Config -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-800">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">목표 PIN (프리셋 선택)</label>
+              <select id="pf-pin-select" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none"></select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">연차 매핑</label>
+              <select id="pf-year-bucket" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none">
+                <option value="1Y">1년 후 목표</option>
+                <option value="2Y">2년 후 목표</option>
+                <option value="3Y">3년 후 목표</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">목표 월 평균수입 (원)</label>
+              <input type="number" id="pf-monthly-income" step="100000" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">연간 보너스/인센티브 (원)</label>
+              <input type="number" id="pf-annual-bonus" step="100000" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white outline-none" />
+            </div>
+          </div>
+
+          <!-- Pinned Linked Dreams Strip & Annual Income vs Dream Budget -->
+          <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div id="pf-income-summary" class="text-slate-200"></div>
+            <div id="pf-linked-dreams-strip" class="flex items-center gap-2 overflow-x-auto no-scrollbar"></div>
+          </div>
+        </div>
+
+        <!-- 12-Month Horizontal Scrollable Leg Planner (Sep ~ Aug) -->
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white"><i class="fa-solid fa-table-columns text-amber-400 mr-1.5"></i>9월~8월 1~8레그 월별 목표 PV & 예상 보너스 (좌우 스크롤)</h3>
+            <span class="text-[11px] text-slate-400">단위: 만PV / 원</span>
+          </div>
+          <div id="pf-months-grid" class="flex space-x-3 overflow-x-auto pb-2">
+            <!-- 12 monthly columns rendered dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-Tab 2: Weekly 10-Core Note -->
+      <div id="planner-tab-core10" class="planner-subpanel hidden space-y-4">
+        <div class="glass-panel rounded-2xl p-5 border border-indigo-500/30 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+              <label class="text-xs font-bold text-indigo-300">주차 선택:</label>
+              <input type="week" id="core10-week-input" class="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white outline-none" />
+            </div>
+            <button id="btn-core10-save" type="button" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition">
+              <i class="fa-solid fa-check mr-1"></i>이번 주 기록 저장
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-bold text-slate-300 mb-1">1. 한 주 동안 감사·감동·해낼 수밖에 없는 이유</label>
+              <textarea id="core10-gratitude" rows="2" placeholder="이번 주 가장 감사했던 순간과 내가 해낼 수밖에 없는 이유..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">2. 책 / 음원(CD)에서 얻은 동기부여 인사이트</label>
+              <textarea id="core10-book" rows="2" placeholder="책 제목, 음원 핵심 문장..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">3. 소비자 관리 & STP 횟수 기록</label>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <span class="text-[10px] text-slate-400">STP 횟수</span>
+                  <input type="number" id="core10-stp" min="0" value="0" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white outline-none" />
+                </div>
+                <div>
+                  <span class="text-[10px] text-slate-400">소비자 케어</span>
+                  <input type="number" id="core10-consumer" min="0" value="0" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-sm text-white outline-none" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">4. 신제품·애용 제품 감동 사례</label>
+              <textarea id="core10-product" rows="2" placeholder="직접 써보고 감동한 제품 이야기..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white outline-none focus:border-indigo-500"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-300 mb-1">5. 다음 주 집중 실행 계획</label>
+              <textarea id="core10-next" rows="2" placeholder="다음 주 핵심 약속 및 실행 목표..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-base sm:text-sm text-white outline-none focus:border-indigo-500"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-2.5">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">지난 주간 10코아 기록 아카이브</h4>
+          <div id="core10-history-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- Sub-Tab 3: PIN Roadmap Timeline & Bonus Reference Table -->
+      <div id="planner-tab-timeline" class="planner-subpanel hidden space-y-4">
+        <div id="pin-timeline-container" class="space-y-3"></div>
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800">
+          <h4 class="text-sm font-bold text-amber-300 mb-3"><i class="fa-solid fa-table-list mr-1.5"></i>PIN별 참고 월간/연간 보너스 기준표 (커스터마이징 가능)</h4>
+          <div id="pin-reference-table" class="overflow-x-auto text-xs"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Mobile Floating Action Button (FAB) -->
@@ -237,7 +392,7 @@
   </button>
 
   <!-- Mobile Bottom Fixed Navigation Bar -->
-  <nav id="mobile-bottom-nav" class="sm:hidden fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-slate-800/90 px-2 py-1.5 pb-safe grid grid-cols-5 gap-1 text-[10px] font-semibold">
+  <nav id="mobile-bottom-nav" class="sm:hidden fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-slate-800/90 px-2 py-1.5 pb-safe flex items-center justify-around text-[10px] font-semibold">
     <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-purple-400" data-nav="board">
       <i class="fa-solid fa-wand-magic-sparkles text-base mb-0.5"></i>
       <span>꿈보드</span>
@@ -253,6 +408,10 @@
     <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="budget">
       <i class="fa-solid fa-sack-dollar text-base mb-0.5"></i>
       <span>목표/예산</span>
+    </button>
+    <button id="btn-nav-planner-mobile" class="mobile-nav-btn hidden flex flex-col items-center justify-center py-1 text-amber-300" data-nav="planner">
+      <i class="fa-solid fa-trophy text-base mb-0.5"></i>
+      <span>플래너</span>
     </button>
     <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="meditate">
       <i class="fa-solid fa-play text-base mb-0.5"></i>
@@ -797,6 +956,21 @@
       <p class="text-xs text-slate-400 mb-5">소중한 꿈과 기록을 JSON 파일로 안전하게 백업하거나 복원할 수 있습니다.</p>
 
       <div class="space-y-4">
+        <!-- Optional Business Module ON/OFF -->
+        <div class="p-4 rounded-xl bg-amber-950/25 border border-amber-500/30 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-amber-200 flex items-center space-x-2">
+              <i class="fa-solid fa-trophy text-amber-400"></i>
+              <span>Amway PIN 로드맵 & 실행 플래너</span>
+            </h3>
+            <p class="text-[11px] text-slate-400 mt-0.5">회계연도(9~8월) 레그 플랜, 주간 10코아 노트, PIN 타임라인 메뉴를 켜고 끌 수 있습니다.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" id="toggle-pin-planner" class="sr-only peer" />
+            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+
         <div class="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-3">
           <h3 class="text-sm font-bold text-slate-200 flex items-center space-x-2">
             <i class="fa-solid fa-shield-halved text-emerald-400"></i>
@@ -845,6 +1019,6 @@
     };
   </script>
   <!-- Firebase SDKs (Modular v10) -->
-  <script type="module" src="app.js?v=20261126_01"></script>
+  <script type="module" src="app.js?v=20261126_02"></script>
 </body>
 </html>

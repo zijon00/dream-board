@@ -278,6 +278,35 @@ const slideSaveWallpaper = document.getElementById("slide-save-wallpaper");
 const slideDiaryBox = document.getElementById("slide-diary-box");
 const btnCheckinStreak = document.getElementById("btn-checkin-streak");
 
+// Stage 3: Optional Business Planner Elements
+const togglePinPlanner = document.getElementById("toggle-pin-planner");
+const btnNavPlannerTop = document.getElementById("btn-nav-planner-top");
+const btnNavPlannerMobile = document.getElementById("btn-nav-planner-mobile");
+const sectionPlanner = document.getElementById("section-planner");
+const btnPlannerBackBoard = document.getElementById("btn-planner-back-board");
+const plannerSubtabs = document.querySelectorAll(".planner-subtab");
+const plannerSubpanels = document.querySelectorAll(".planner-subpanel");
+const pfSelect = document.getElementById("pf-select");
+const pfStatusBadge = document.getElementById("pf-status-badge");
+const btnPfRollover = document.getElementById("btn-pf-rollover");
+const btnPfSave = document.getElementById("btn-pf-save");
+const pfPinSelect = document.getElementById("pf-pin-select");
+const pfYearBucket = document.getElementById("pf-year-bucket");
+const pfMonthlyIncome = document.getElementById("pf-monthly-income");
+const pfAnnualBonus = document.getElementById("pf-annual-bonus");
+const pfIncomeSummary = document.getElementById("pf-income-summary");
+const pfLinkedDreamsStrip = document.getElementById("pf-linked-dreams-strip");
+const pfMonthsGrid = document.getElementById("pf-months-grid");
+const core10WeekInput = document.getElementById("core10-week-input");
+const btnCore10Save = document.getElementById("btn-core10-save");
+const core10HistoryList = document.getElementById("core10-history-list");
+const pinTimelineContainer = document.getElementById("pin-timeline-container");
+const pinReferenceTable = document.getElementById("pin-reference-table");
+
+let fiscalPlansMap = {};
+let coreLogsMap = {};
+let currentPfCode = "";
+
 // Init function (invoked at bottom after all bindings)
 function initApp() {
   setupAuth();
@@ -554,6 +583,7 @@ function setupEventListeners() {
       const target = btn.dataset.nav;
       if (target === "board") switchMainView("board");
       else if (target === "diary") switchMainView("diary");
+      else if (target === "planner") switchMainView("planner");
       else if (target === "dream100") openDream100Modal();
       else if (target === "budget") openBudgetPlannerModal();
       else if (target === "meditate") startSlideshow();
@@ -600,6 +630,70 @@ function setupEventListeners() {
   if (slideTtsToggle) slideTtsToggle.addEventListener("click", toggleSlideTts);
   if (slideSaveWallpaper) slideSaveWallpaper.addEventListener("click", savePhoneWallpaper);
   if (btnCheckinStreak) btnCheckinStreak.addEventListener("click", checkinVisualizationStreak);
+
+  // Stage 3: Business Planner Module Listeners
+  if (togglePinPlanner) {
+    togglePinPlanner.addEventListener("change", async () => {
+      const enabled = togglePinPlanner.checked;
+      await saveUserProfile({ enablePinPlanner: enabled });
+      applyPinPlannerVisibility();
+      if (!enabled && sectionPlanner && !sectionPlanner.classList.contains("hidden")) {
+        switchMainView("board");
+      }
+      showToast(enabled ? "PIN 로드맵 & 실행 플래너가 활성화되었습니다! 🏆" : "심플 꿈보드 모드로 전환되었습니다.");
+    });
+  }
+  if (btnNavPlannerTop) btnNavPlannerTop.addEventListener("click", () => switchMainView("planner"));
+  if (btnPlannerBackBoard) btnPlannerBackBoard.addEventListener("click", () => switchMainView("board"));
+
+  plannerSubtabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      plannerSubtabs.forEach(t => {
+        t.classList.remove("bg-amber-600", "text-white");
+        t.classList.add("bg-slate-900", "text-slate-400");
+      });
+      tab.classList.add("bg-amber-600", "text-white");
+      tab.classList.remove("bg-slate-900", "text-slate-400");
+      const target = tab.dataset.subtab;
+      plannerSubpanels.forEach(p => p.classList.add("hidden"));
+      document.getElementById(`planner-tab-${target}`)?.classList.remove("hidden");
+      if (target === "timeline") {
+        renderPinTimeline();
+        renderPinReferenceTable();
+      }
+    });
+  });
+
+  if (pfSelect) {
+    pfSelect.addEventListener("change", () => {
+      currentPfCode = pfSelect.value;
+      renderFiscalPlanner();
+    });
+  }
+  if (pfPinSelect) {
+    pfPinSelect.addEventListener("change", () => {
+      const preset = PIN_PRESETS.find(p => p.pin === pfPinSelect.value);
+      if (preset) {
+        if (pfMonthlyIncome) pfMonthlyIncome.value = preset.monthly;
+        if (pfAnnualBonus) pfAnnualBonus.value = preset.annualBonus;
+      }
+      updateCurrentPfDraftFromHeader();
+      renderPfIncomeSummary();
+    });
+  }
+  [pfYearBucket, pfMonthlyIncome, pfAnnualBonus].forEach(el => {
+    el?.addEventListener("input", () => {
+      updateCurrentPfDraftFromHeader();
+      renderPfIncomeSummary();
+    });
+  });
+  if (btnPfSave) btnPfSave.addEventListener("click", saveCurrentFiscalPlan);
+  if (btnPfRollover) btnPfRollover.addEventListener("click", rolloverFiscalPlan);
+
+  if (core10WeekInput) {
+    core10WeekInput.addEventListener("change", renderCore10Form);
+  }
+  if (btnCore10Save) btnCore10Save.addEventListener("click", saveCurrentCoreLog);
 }
 
 // --- Fetch & Render ---
@@ -1968,7 +2062,11 @@ function exportDataAsJson() {
   const backup = {
     version: "1.2",
     exportedAt: new Date().toISOString(),
-    dreams
+    profile: userProfileData,
+    dreams,
+    dream100List,
+    fiscalPlans: fiscalPlansMap,
+    coreLogs: coreLogsMap
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -2069,6 +2167,8 @@ function loadLocalUserProfile() {
   } catch {}
   renderMyWhyBanner();
   updateStreakUI();
+  applyPinPlannerVisibility();
+  loadPlannerDataLocal();
 }
 
 async function loadUserProfile(uid) {
@@ -2080,7 +2180,9 @@ async function loadUserProfile(uid) {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfileData));
       renderMyWhyBanner();
       updateStreakUI();
+      applyPinPlannerVisibility();
     }
+    await loadPlannerDataFromFirestore(uid);
   } catch {}
 }
 
@@ -2309,15 +2411,21 @@ function deleteDream100Item(idx) {
 
 // Future Diary & Main View Switcher
 function switchMainView(viewName) {
+  sectionDreamBoard?.classList.add("hidden");
+  sectionFutureDiary?.classList.add("hidden");
+  sectionPlanner?.classList.add("hidden");
+
   if (viewName === "diary") {
-    sectionDreamBoard.classList.add("hidden");
     headerSubbar?.classList.add("hidden");
-    sectionFutureDiary.classList.remove("hidden");
+    sectionFutureDiary?.classList.remove("hidden");
     renderFutureDiaryList();
+  } else if (viewName === "planner") {
+    headerSubbar?.classList.add("hidden");
+    sectionPlanner?.classList.remove("hidden");
+    initPlannerView();
   } else {
-    sectionFutureDiary.classList.add("hidden");
-    sectionDreamBoard.classList.remove("hidden");
     headerSubbar?.classList.remove("hidden");
+    sectionDreamBoard?.classList.remove("hidden");
   }
   mobileNavBtns.forEach(btn => {
     const active = btn.dataset.nav === viewName;
@@ -2397,6 +2505,461 @@ async function handleDiaryFormSubmit(e) {
   }
 }
 
+// --- Stage 3: Optional Business Planner Module (PIN Roadmap, Fiscal Year Plan, Weekly 10-Core) ---
+
+const PF_STORAGE_KEY = "my_dream_board_fiscal_plans";
+const CORE10_STORAGE_KEY = "my_dream_board_core_logs";
+const PF_MONTHS = ["09", "10", "11", "12", "01", "02", "03", "04", "05", "06", "07", "08"];
+
+const PIN_PRESETS = [
+  { pin: "브론즈 파운데이션 / 9~15%", monthly: 500000, annualBonus: 0, desc: "3레그 이상 3%~6% 균형 구축" },
+  { pin: "브론즈 빌더 / 15~18%", monthly: 1200000, annualBonus: 0, desc: "3레그 6% 이상 안정 성장" },
+  { pin: "SP (21%)", monthly: 2500000, annualBonus: 0, desc: "1,000만 PV 달성 (월간 21% 보너스)" },
+  { pin: "GP (골드 프로듀서)", monthly: 2800000, annualBonus: 1500000, desc: "회계연도 내 21% 3개월 달성" },
+  { pin: "PT (플래티늄)", monthly: 3200000, annualBonus: 3500000, desc: "21% 6개월 달성 (리더십 정착)" },
+  { pin: "Founders PT", monthly: 3800000, annualBonus: 7000000, desc: "21% 12개월 달성 (연간 인센티브)" },
+  { pin: "Sapphire (사파이어)", monthly: 5500000, annualBonus: 12000000, desc: "2개 Q레그 + 사이드 볼륨" },
+  { pin: "Founders Sapphire", monthly: 7000000, annualBonus: 20000000, desc: "2개 Q레그 12개월 유지" },
+  { pin: "Emerald (에메랄드)", monthly: 9500000, annualBonus: 35000000, desc: "3개 Q레그 6개월 이상 달성" },
+  { pin: "Founders Emerald", monthly: 12000000, annualBonus: 55000000, desc: "3개 Q레그 12개월 달성" },
+  { pin: "Diamond (다이아몬드)", monthly: 18000000, annualBonus: 90000000, desc: "6개 Q레그 6개월 이상 달성" },
+  { pin: "Founders Diamond", monthly: 25000000, annualBonus: 150000000, desc: "6개 Q레그 12개월 달성" }
+];
+
+function applyPinPlannerVisibility() {
+  const enabled = Boolean(userProfileData.enablePinPlanner);
+  if (togglePinPlanner) togglePinPlanner.checked = enabled;
+  if (btnNavPlannerTop) {
+    btnNavPlannerTop.classList.toggle("hidden", !enabled);
+    btnNavPlannerTop.classList.toggle("md:flex", enabled);
+  }
+  if (btnNavPlannerMobile) {
+    btnNavPlannerMobile.classList.toggle("hidden", !enabled);
+  }
+}
+
+function getCurrentFiscalYearNum() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  // Amway Fiscal Year starts in September (Month 9 -> PF of year+1)
+  const pfYear = month >= 9 ? year + 1 : year;
+  return pfYear % 100;
+}
+
+function getCurrentFiscalYearCode() {
+  return `PF${String(getCurrentFiscalYearNum()).padStart(2, "0")}`;
+}
+
+function getFiscalYearRangeLabel(pfCode) {
+  const num = parseInt(String(pfCode).replace(/\D/g, ""), 10);
+  if (isNaN(num)) return pfCode;
+  const endYear = 2000 + num;
+  const startYear = endYear - 1;
+  return `${pfCode} (${startYear}.09 ~ ${endYear}.08)`;
+}
+
+function createEmptyFiscalPlan(pfCode) {
+  const curNum = getCurrentFiscalYearNum();
+  const num = parseInt(String(pfCode).replace(/\D/g, ""), 10) || curNum;
+  const diff = Math.max(0, Math.min(2, num - curNum));
+  const yearBucket = diff === 0 ? "1Y" : (diff === 1 ? "2Y" : "3Y");
+  const monthlyPlan = {};
+  PF_MONTHS.forEach(m => {
+    monthlyPlan[m] = { legsPv: [0, 0, 0, 0, 0, 0, 0, 0], sidePv: 0, qLegs: 0, estIncome: 0 };
+  });
+  return {
+    fiscalYear: pfCode,
+    yearBucket,
+    targetPin: "PT (플래티늄)",
+    expectedMonthlyIncome: 3200000,
+    expectedAnnualBonus: 3500000,
+    monthlyPlan,
+    memo: "",
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function loadPlannerDataLocal() {
+  try {
+    const rawPf = localStorage.getItem(PF_STORAGE_KEY);
+    if (rawPf) fiscalPlansMap = JSON.parse(rawPf) || {};
+    const rawCore = localStorage.getItem(CORE10_STORAGE_KEY);
+    if (rawCore) coreLogsMap = JSON.parse(rawCore) || {};
+  } catch {}
+}
+
+function savePlannerDataLocal() {
+  try {
+    localStorage.setItem(PF_STORAGE_KEY, JSON.stringify(fiscalPlansMap));
+    localStorage.setItem(CORE10_STORAGE_KEY, JSON.stringify(coreLogsMap));
+  } catch {}
+}
+
+async function loadPlannerDataFromFirestore(uid) {
+  try {
+    const pfSnap = await getDocs(collection(db, "users", uid, "fiscalPlans"));
+    pfSnap.forEach(docSnap => {
+      fiscalPlansMap[docSnap.id] = docSnap.data();
+    });
+    const coreSnap = await getDocs(collection(db, "users", uid, "coreLogs"));
+    coreSnap.forEach(docSnap => {
+      coreLogsMap[docSnap.id] = docSnap.data();
+    });
+    savePlannerDataLocal();
+  } catch {}
+}
+
+function getCurrentIsoWeek() {
+  const d = new Date();
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function initPlannerView() {
+  if (!currentPfCode) {
+    currentPfCode = getCurrentFiscalYearCode();
+  }
+  renderFiscalYearOptions();
+  renderPinSelectOptions();
+  renderFiscalPlanner();
+
+  if (core10WeekInput && !core10WeekInput.value) {
+    core10WeekInput.value = getCurrentIsoWeek();
+  }
+  renderCore10Form();
+  renderCore10History();
+}
+
+function renderFiscalYearOptions() {
+  if (!pfSelect) return;
+  const curNum = getCurrentFiscalYearNum();
+  const codeSet = new Set();
+  // Include past 3 years, current year, and future 3 years + any saved PF
+  for (let y = curNum - 3; y <= curNum + 3; y++) {
+    codeSet.add(`PF${String(y).padStart(2, "0")}`);
+  }
+  Object.keys(fiscalPlansMap).forEach(k => codeSet.add(k));
+
+  const sortedCodes = Array.from(codeSet).sort();
+  pfSelect.innerHTML = sortedCodes.map(code => {
+    const num = parseInt(code.replace(/\D/g, ""), 10);
+    let tag = "";
+    if (num < curNum) tag = " [지난 회계연도]";
+    else if (num === curNum) tag = " [현재 진행 중]";
+    else tag = " [미래 계획]";
+    const savedMark = fiscalPlansMap[code] ? " ✓" : "";
+    return `<option value="${code}">${getFiscalYearRangeLabel(code)}${tag}${savedMark}</option>`;
+  }).join("");
+  pfSelect.value = currentPfCode;
+}
+
+function renderPinSelectOptions() {
+  if (!pfPinSelect) return;
+  pfPinSelect.innerHTML = PIN_PRESETS.map(p => `<option value="${p.pin}">${p.pin}</option>`).join("");
+}
+
+function getOrCreatePfDraft(pfCode) {
+  if (!fiscalPlansMap[pfCode]) {
+    fiscalPlansMap[pfCode] = createEmptyFiscalPlan(pfCode);
+  }
+  return fiscalPlansMap[pfCode];
+}
+
+function updateCurrentPfDraftFromHeader() {
+  const plan = getOrCreatePfDraft(currentPfCode);
+  if (pfPinSelect) plan.targetPin = pfPinSelect.value;
+  if (pfYearBucket) plan.yearBucket = pfYearBucket.value;
+  if (pfMonthlyIncome) plan.expectedMonthlyIncome = Math.max(0, parseInt(pfMonthlyIncome.value, 10) || 0);
+  if (pfAnnualBonus) plan.expectedAnnualBonus = Math.max(0, parseInt(pfAnnualBonus.value, 10) || 0);
+}
+
+function renderPfIncomeSummary() {
+  const plan = getOrCreatePfDraft(currentPfCode);
+  let monthlySum = 0;
+  PF_MONTHS.forEach(m => {
+    monthlySum += parseInt(plan.monthlyPlan?.[m]?.estIncome || 0, 10) || 0;
+  });
+  const baseAnnual = monthlySum > 0 ? monthlySum : (plan.expectedMonthlyIncome || 0) * 12;
+  const totalEstAnnual = baseAnnual + (plan.expectedAnnualBonus || 0);
+
+  const bucketDreams = dreams.filter(d => !d.is_completed && (d.targetYearBucket || "1Y") === (plan.yearBucket || "1Y"));
+  const bucketBudget = bucketDreams.reduce((sum, d) => sum + Math.max(0, (d.estimated_budget || 0) - (d.savedAmount || 0)), 0);
+
+  if (pfIncomeSummary) {
+    pfIncomeSummary.innerHTML = `
+      <span>예상 연간 총수입: <strong class="text-amber-300">${formatKoreanCurrency(totalEstAnnual)}</strong></span>
+      <span class="mx-2 text-slate-600">|</span>
+      <span>연결된 ${plan.yearBucket} 꿈 잔여예산: <strong class="text-purple-300">${formatKoreanCurrency(bucketBudget)}</strong> (${bucketDreams.length}건)</span>
+    `;
+  }
+
+  if (pfLinkedDreamsStrip) {
+    if (bucketDreams.length === 0) {
+      pfLinkedDreamsStrip.innerHTML = `<span class="text-slate-500 text-[11px]">연결된 꿈 없음</span>`;
+    } else {
+      pfLinkedDreamsStrip.innerHTML = bucketDreams.slice(0, 5).map(d => {
+        const thumb = d.primary_media && d.primary_media.media_type !== "video"
+          ? `<img src="${d.primary_media.url}" class="w-6 h-6 rounded object-cover" />`
+          : `<span class="w-6 h-6 rounded bg-purple-900/60 flex items-center justify-center text-[10px]">✨</span>`;
+        return `<div class="flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 shrink-0">${thumb}<span class="text-[11px] text-slate-200 max-w-[90px] truncate">${d.title}</span></div>`;
+      }).join("");
+    }
+  }
+}
+
+function renderFiscalPlanner() {
+  const plan = getOrCreatePfDraft(currentPfCode);
+  const curNum = getCurrentFiscalYearNum();
+  const num = parseInt(currentPfCode.replace(/\D/g, ""), 10);
+
+  if (pfStatusBadge) {
+    if (num < curNum) {
+      pfStatusBadge.textContent = "지난 회계연도 (아카이브)";
+      pfStatusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-600";
+    } else if (num === curNum) {
+      pfStatusBadge.textContent = "현재 진행 중";
+      pfStatusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50";
+    } else {
+      pfStatusBadge.textContent = "예정된 미래 계획";
+      pfStatusBadge.className = "px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-700/50";
+    }
+  }
+
+  if (pfPinSelect) pfPinSelect.value = plan.targetPin || "PT (플래티늄)";
+  if (pfYearBucket) pfYearBucket.value = plan.yearBucket || "1Y";
+  if (pfMonthlyIncome) pfMonthlyIncome.value = plan.expectedMonthlyIncome || 0;
+  if (pfAnnualBonus) pfAnnualBonus.value = plan.expectedAnnualBonus || 0;
+
+  renderPfIncomeSummary();
+
+  if (!pfMonthsGrid) return;
+  pfMonthsGrid.innerHTML = PF_MONTHS.map(m => {
+    const mData = plan.monthlyPlan?.[m] || { legsPv: [0, 0, 0, 0, 0, 0, 0, 0], sidePv: 0, qLegs: 0, estIncome: 0 };
+    const legs = Array.isArray(mData.legsPv) ? mData.legsPv : [0, 0, 0, 0, 0, 0, 0, 0];
+    const legsInputs = [0, 1, 2, 3, 4, 5, 6, 7].map(idx => `
+      <div class="flex items-center justify-between gap-1">
+        <span class="text-[10px] text-slate-500 w-7">${idx + 1}레그</span>
+        <input type="number" min="0" value="${legs[idx] || ''}" placeholder="0"
+          oninput="window.onPfMonthLegInput('${m}', ${idx}, this.value)"
+          class="w-16 px-1.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-right text-white outline-none focus:border-amber-500" />
+      </div>
+    `).join("");
+
+    return `
+      <div class="w-40 shrink-0 p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+        <div class="text-xs font-extrabold text-amber-300 text-center pb-1 border-b border-slate-800">${parseInt(m, 10)}월</div>
+        <div class="space-y-1">${legsInputs}</div>
+        <div class="pt-1.5 border-t border-slate-800 space-y-1">
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] text-indigo-300">Q레그</span>
+            <input type="number" min="0" max="20" value="${mData.qLegs || ''}" placeholder="0"
+              oninput="window.onPfMonthFieldInput('${m}', 'qLegs', this.value)"
+              class="w-16 px-1.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-right text-indigo-200 outline-none" />
+          </div>
+          <div class="flex items-center justify-between gap-1">
+            <span class="text-[10px] text-slate-400">SIDE</span>
+            <input type="number" min="0" value="${mData.sidePv || ''}" placeholder="0"
+              oninput="window.onPfMonthFieldInput('${m}', 'sidePv', this.value)"
+              class="w-16 px-1.5 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-right text-white outline-none" />
+          </div>
+          <div>
+            <span class="text-[10px] text-emerald-300 block mb-0.5">예상 월수입(원)</span>
+            <input type="number" min="0" step="100000" value="${mData.estIncome || ''}" placeholder="0"
+              oninput="window.onPfMonthFieldInput('${m}', 'estIncome', this.value)"
+              class="w-full px-2 py-1 rounded bg-slate-950 border border-slate-800 text-xs text-right text-emerald-300 font-bold outline-none" />
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function onPfMonthLegInput(month, legIdx, val) {
+  const plan = getOrCreatePfDraft(currentPfCode);
+  if (!plan.monthlyPlan) plan.monthlyPlan = {};
+  if (!plan.monthlyPlan[month]) plan.monthlyPlan[month] = { legsPv: [0, 0, 0, 0, 0, 0, 0, 0], sidePv: 0, qLegs: 0, estIncome: 0 };
+  if (!Array.isArray(plan.monthlyPlan[month].legsPv)) plan.monthlyPlan[month].legsPv = [0, 0, 0, 0, 0, 0, 0, 0];
+  plan.monthlyPlan[month].legsPv[legIdx] = Math.max(0, parseInt(val, 10) || 0);
+}
+
+function onPfMonthFieldInput(month, field, val) {
+  const plan = getOrCreatePfDraft(currentPfCode);
+  if (!plan.monthlyPlan) plan.monthlyPlan = {};
+  if (!plan.monthlyPlan[month]) plan.monthlyPlan[month] = { legsPv: [0, 0, 0, 0, 0, 0, 0, 0], sidePv: 0, qLegs: 0, estIncome: 0 };
+  plan.monthlyPlan[month][field] = Math.max(0, parseInt(val, 10) || 0);
+  if (field === "estIncome") renderPfIncomeSummary();
+}
+
+async function saveCurrentFiscalPlan() {
+  updateCurrentPfDraftFromHeader();
+  const plan = getOrCreatePfDraft(currentPfCode);
+  plan.updatedAt = new Date().toISOString();
+  fiscalPlansMap[currentPfCode] = plan;
+  savePlannerDataLocal();
+  renderFiscalYearOptions();
+  showToast(`${currentPfCode} 회계연도 플랜이 저장되었습니다! 📅✨`);
+
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "fiscalPlans", currentPfCode), plan, { merge: true });
+    } catch {}
+  }
+}
+
+async function rolloverFiscalPlan() {
+  const num = parseInt(currentPfCode.replace(/\D/g, ""), 10) || getCurrentFiscalYearNum();
+  const nextPfCode = `PF${String(num + 1).padStart(2, "0")}`;
+  if (!confirm(`현재 ${currentPfCode} 계획을 다음 회계연도(${nextPfCode})로 복사/이월하시겠습니까?`)) return;
+
+  const source = JSON.parse(JSON.stringify(getOrCreatePfDraft(currentPfCode)));
+  source.fiscalYear = nextPfCode;
+  source.updatedAt = new Date().toISOString();
+  fiscalPlansMap[nextPfCode] = source;
+  currentPfCode = nextPfCode;
+  savePlannerDataLocal();
+  renderFiscalYearOptions();
+  renderFiscalPlanner();
+  showToast(`${nextPfCode} 회계연도로 플랜이 유연하게 이월되었습니다! 🚀`);
+
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "fiscalPlans", nextPfCode), source, { merge: true });
+    } catch {}
+  }
+}
+
+// Weekly 10-Core Note
+function renderCore10Form() {
+  const weekId = core10WeekInput?.value || getCurrentIsoWeek();
+  const existing = coreLogsMap[weekId] || {};
+  document.getElementById("core10-gratitude").value = existing.gratitudeAndWhy || "";
+  document.getElementById("core10-book").value = existing.bookAndAudioInsight || "";
+  document.getElementById("core10-stp").value = existing.stpAndConsumerCount?.stp ?? 0;
+  document.getElementById("core10-consumer").value = existing.stpAndConsumerCount?.consumerCare ?? 0;
+  document.getElementById("core10-product").value = existing.productStory || "";
+  document.getElementById("core10-next").value = existing.nextWeekFocus || "";
+}
+
+async function saveCurrentCoreLog() {
+  const weekId = core10WeekInput?.value || getCurrentIsoWeek();
+  const entry = {
+    weekId,
+    gratitudeAndWhy: document.getElementById("core10-gratitude").value.trim(),
+    bookAndAudioInsight: document.getElementById("core10-book").value.trim(),
+    stpAndConsumerCount: {
+      stp: Math.max(0, parseInt(document.getElementById("core10-stp").value, 10) || 0),
+      consumerCare: Math.max(0, parseInt(document.getElementById("core10-consumer").value, 10) || 0)
+    },
+    productStory: document.getElementById("core10-product").value.trim(),
+    nextWeekFocus: document.getElementById("core10-next").value.trim(),
+    createdAt: coreLogsMap[weekId]?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  coreLogsMap[weekId] = entry;
+  savePlannerDataLocal();
+  renderCore10History();
+  showToast(`${weekId} 주간 10코아 노트가 저장되었습니다! 📝✨`);
+
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "coreLogs", weekId), entry, { merge: true });
+    } catch {}
+  }
+}
+
+function renderCore10History() {
+  if (!core10HistoryList) return;
+  const entries = Object.values(coreLogsMap).sort((a, b) => (b.weekId || "").localeCompare(a.weekId || ""));
+  if (entries.length === 0) {
+    core10HistoryList.innerHTML = `<div class="col-span-full text-center py-6 text-xs text-slate-500">아직 작성된 주간 10코아 노트가 없습니다.</div>`;
+    return;
+  }
+
+  core10HistoryList.innerHTML = entries.map(log => `
+    <div onclick="window.selectCore10Week('${log.weekId}')" class="glass-panel rounded-xl p-4 border border-slate-800 hover:border-indigo-500/40 cursor-pointer space-y-2 transition">
+      <div class="flex items-center justify-between">
+        <span class="px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/50 text-xs font-bold">${log.weekId}</span>
+        <span class="text-[11px] text-slate-400">STP ${log.stpAndConsumerCount?.stp || 0}회 · 케어 ${log.stpAndConsumerCount?.consumerCare || 0}회</span>
+      </div>
+      ${log.gratitudeAndWhy ? `<p class="text-xs text-slate-200 line-clamp-2">🙏 ${log.gratitudeAndWhy}</p>` : ''}
+      ${log.nextWeekFocus ? `<p class="text-[11px] text-amber-300 line-clamp-1">🎯 ${log.nextWeekFocus}</p>` : ''}
+    </div>
+  `).join("");
+}
+
+function selectCore10Week(weekId) {
+  if (core10WeekInput) {
+    core10WeekInput.value = weekId;
+    renderCore10Form();
+  }
+}
+
+// PIN Roadmap Timeline & Reference Table
+function renderPinTimeline() {
+  if (!pinTimelineContainer) return;
+  const buckets = [
+    { key: "1Y", label: "1년 후 목표" },
+    { key: "2Y", label: "2년 후 목표" },
+    { key: "3Y", label: "3년 후 목표" }
+  ];
+
+  const savedPfs = Object.values(fiscalPlansMap);
+  pinTimelineContainer.innerHTML = buckets.map(b => {
+    const matchedPf = savedPfs.find(p => p.yearBucket === b.key);
+    const bDreams = dreams.filter(d => !d.is_completed && (d.targetYearBucket || "1Y") === b.key);
+    const bBudget = bDreams.reduce((s, d) => s + Math.max(0, (d.estimated_budget || 0) - (d.savedAmount || 0)), 0);
+
+    return `
+      <div class="glass-panel rounded-2xl p-4 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="space-y-1">
+          <div class="flex items-center space-x-2">
+            <span class="px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">${b.label}</span>
+            <span class="text-sm font-bold text-white">${matchedPf ? `🏆 ${matchedPf.targetPin} (${matchedPf.fiscalYear})` : '목표 PIN 미연결'}</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            실현 예정 꿈 <strong class="text-purple-300">${bDreams.length}건</strong> · 잔여 필요 예산 <strong class="text-amber-200">${formatKoreanCurrency(bBudget)}</strong>
+          </p>
+        </div>
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          ${bDreams.slice(0, 4).map(d => `<span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-200 whitespace-nowrap">${d.title}</span>`).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPinReferenceTable() {
+  if (!pinReferenceTable) return;
+  pinReferenceTable.innerHTML = `
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="border-b border-slate-800 text-slate-400">
+          <th class="py-2 pr-3">목표 PIN</th>
+          <th class="py-2 px-3">참고 월 평균수입</th>
+          <th class="py-2 px-3">참고 연간 보너스</th>
+          <th class="py-2 pl-3">달성 기준 요약</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800/60">
+        ${PIN_PRESETS.map(p => `
+          <tr class="hover:bg-slate-900/50">
+            <td class="py-2 pr-3 font-bold text-amber-300 whitespace-nowrap">${p.pin}</td>
+            <td class="py-2 px-3 text-slate-200 whitespace-nowrap">${formatKoreanCurrency(p.monthly)}</td>
+            <td class="py-2 px-3 text-emerald-300 whitespace-nowrap">${formatKoreanCurrency(p.annualBonus)}</td>
+            <td class="py-2 pl-3 text-slate-400">${p.desc}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
 // Expose handlers globally for inline onclick templates inside ES module
 window.openDreamModal = openDreamModal;
 window.openMediaModal = openMediaModal;
@@ -2414,6 +2977,9 @@ window.promoteDream100Item = promoteDream100Item;
 window.deleteDream100Item = deleteDream100Item;
 window.openDiaryModal = openDiaryModal;
 window.applyInspirationChip = applyInspirationChip;
+window.onPfMonthLegInput = onPfMonthLegInput;
+window.onPfMonthFieldInput = onPfMonthFieldInput;
+window.selectCore10Week = selectCore10Week;
 
 // Start application
 if (document.readyState === "loading") {
