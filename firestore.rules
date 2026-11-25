@@ -11,35 +11,78 @@ service cloud.firestore {
     // Document ID: Firebase Auth UID
     // Fields:
     //   - uid: string (optional, must match request.auth.uid)
-    //   - email: string (optional, max 100 chars)
-    //   - displayName: string (optional, max 100 chars)
-    //   - photoURL: string (optional, max 2000 chars)
-    //   - created_at: string (optional, max 100 chars)
-    //   - updated_at: string (optional, max 100 chars)
+    //   - email: string (optional, 1-100 chars)
+    //   - displayName: string (optional, 1-100 chars)
+    //   - photoURL: string (optional, 1-2000 chars)
+    //   - created_at: string (optional, 1-100 chars, immutable on update)
+    //   - updated_at: string (optional, 1-100 chars)
+    //   - myWhy: list (optional, max 10 items)
+    //   - enablePinPlanner: bool (optional)
+    //   - monthlySavingCapacity: number (optional, >= 0, <= 1000000000000)
+    //   - visualizationStreak: map (optional, max 20 keys)
+    //   - updatedAt: string or timestamp (optional, string 1-100 chars)
     //
     // Collection: /users/{userId}/dreams/{dreamId}
     // Document ID: string (e.g. "dream-1731602400000")
     // Fields:
-    //   - id: string (optional/required, max 100 chars, immutable on update)
+    //   - id: string (optional, 1-100 chars, immutable on update)
     //   - title: string (required, 1-200 chars)
-    //   - category: string (required, 'DO' | 'HAVE' | 'GIVE')
-    //   - description: string (optional, max 5000 chars)
-    //   - vivid_description: string (optional, max 5000 chars)
-    //   - deadline: string (optional, max 100 chars)
-    //   - target_date: string (optional, max 100 chars)
+    //   - category: string (required, 'DO' | 'HAVE' | 'GIVE' | 'GO' | 'BE')
+    //   - description: string (optional, 0-5000 chars)
+    //   - vivid_description: string (optional, 0-5000 chars)
+    //   - deadline: string (optional, 0-100 chars)
+    //   - target_date: string (optional, 0-100 chars)
     //   - budget: number (optional, >= 0, <= 1000000000000)
     //   - estimated_budget: number (optional, >= 0, <= 1000000000000)
-    //   - budget_notes: string (optional, max 1000 chars)
+    //   - budget_notes: string (optional, 0-1000 chars)
     //   - media_type: string (optional, 'image' | 'video')
-    //   - media_url: string (optional, http/https, data URL, or storage URL, max 1000000 chars)
-    //   - primary_media: map or null (optional)
+    //   - media_url: string (optional, http/https, data, blob, or gs URL, max 1000000 chars)
+    //   - primary_media: map or null (optional, max 20 keys)
     //   - media_history: list (optional, max 50 items)
     //   - completed: bool (optional)
     //   - is_completed: bool (optional)
     //   - completed_at: string or null (optional, max 100 chars)
-    //   - affirmation: string (optional, max 1000 chars)
-    //   - created_at: string (optional, max 100 chars, immutable on update)
-    //   - updated_at: string (optional, max 100 chars)
+    //   - affirmation: string (optional, 0-1000 chars)
+    //   - created_at: string (optional, 1-100 chars, immutable on update)
+    //   - updated_at: string (optional, 1-100 chars)
+    //   - whyNote: string (optional, 0-1000 chars)
+    //   - futureDiary: map or null (optional, max 20 keys)
+    //   - targetYearBucket: string (optional, '1Y' | '2Y' | '3Y')
+    //   - targetDate: string (optional, 0-100 chars)
+    //   - savedAmount: number (optional, >= 0, <= 1000000000000)
+    //   - budgetMemo: string (optional, 0-1000 chars)
+    //   - linkedFiscalYear: string (optional, 0-30 chars)
+    //   - linkedPin: string (optional, 0-100 chars)
+    //   - isCompleted: bool (optional)
+    //   - completedAt: string or null (optional, max 100 chars)
+    //   - activeMedia: map or null (optional, max 20 keys; if url present, valid media URL)
+    //   - mediaHistory: list (optional, max 50 items)
+    //   - createdAt: string or timestamp (optional, string 1-100 chars, immutable on update)
+    //   - updatedAt: string or timestamp (optional, string 1-100 chars)
+    //
+    // Collection: /users/{userId}/fiscalPlans/{pfId}
+    // Document ID: string (fiscal plan ID)
+    // Fields:
+    //   - fiscalYear: string (required, 1-30 chars)
+    //   - yearBucket: string (optional, 0-20 chars)
+    //   - targetPin: string (optional, 0-100 chars)
+    //   - expectedMonthlyIncome: number (optional, >= 0, <= 1000000000000)
+    //   - expectedAnnualBonus: number (optional, >= 0, <= 1000000000000)
+    //   - monthlyPlan: map (optional, max 24 keys)
+    //   - memo: string (optional, 0-2000 chars)
+    //   - updatedAt: string or timestamp (optional, string 1-100 chars)
+    //
+    // Collection: /users/{userId}/coreLogs/{weekId}
+    // Document ID: string (week ID)
+    // Fields:
+    //   - weekId: string (required, 1-30 chars, immutable on update)
+    //   - gratitudeAndWhy: string (optional, 0-5000 chars)
+    //   - bookAndAudioInsight: string (optional, 0-5000 chars)
+    //   - stpAndConsumerCount: map (optional, max 20 keys)
+    //   - productStory: string (optional, 0-5000 chars)
+    //   - nextWeekFocus: string (optional, 0-5000 chars)
+    //   - createdAt: string or timestamp (optional, string 1-100 chars, immutable on update)
+    //   - updatedAt: string or timestamp (optional, string 1-100 chars)
     //
     // ===============================================================
 
@@ -82,11 +125,35 @@ service cloud.firestore {
         (request.resource.data[field] is bool);
     }
 
+    function isValidOptionalTimestampOrString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] is timestamp ||
+        (request.resource.data[field] is string &&
+         request.resource.data[field].size() >= minLen &&
+         request.resource.data[field].size() <= maxLen);
+    }
+
+    function isValidOptionalMap(field, maxKeys) {
+      return !(field in request.resource.data) ||
+        (request.resource.data[field] is map &&
+         request.resource.data[field].keys().size() <= maxKeys);
+    }
+
+    function isValidOptionalNullableMap(field, maxKeys) {
+      return !(field in request.resource.data) ||
+        request.resource.data[field] == null ||
+        (request.resource.data[field] is map &&
+         request.resource.data[field].keys().size() <= maxKeys);
+    }
+
     function isValidMediaUrl(url) {
       return url is string &&
         url.size() > 0 &&
         url.size() <= 1000000 &&
-        (url.matches("^https?://.*") || url.matches("^data:(image|video)/.*") || url.matches("^blob:.*"));
+        (url.matches("^https?://.*") ||
+         url.matches("^data:.*") ||
+         url.matches("^blob:.*") ||
+         url.matches("^gs://.*"));
     }
 
     // ===============================================================
@@ -94,13 +161,25 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'created_at', 'updated_at']) &&
+      return hasOnlyAllowedFields([
+          'uid', 'email', 'displayName', 'photoURL', 'created_at', 'updated_at',
+          'myWhy', 'enablePinPlanner', 'monthlySavingCapacity', 'visualizationStreak', 'updatedAt'
+        ]) &&
         (!('uid' in data) || (data.uid is string && data.uid == request.auth.uid)) &&
         isValidOptionalString('email', 1, 100) &&
         isValidOptionalString('displayName', 1, 100) &&
         isValidOptionalString('photoURL', 1, 2000) &&
         isValidOptionalString('created_at', 1, 100) &&
-        isValidOptionalString('updated_at', 1, 100);
+        isValidOptionalString('updated_at', 1, 100) &&
+        (!('myWhy' in data) || (data.myWhy is list && data.myWhy.size() <= 10)) &&
+        isValidOptionalBool('enablePinPlanner') &&
+        isValidOptionalNumber('monthlySavingCapacity', 0, 1000000000000) &&
+        isValidOptionalMap('visualizationStreak', 20) &&
+        isValidOptionalTimestampOrString('updatedAt', 1, 100);
+    }
+
+    function areImmutableUserFieldsUnchanged() {
+      return (!('created_at' in resource.data) || !('created_at' in request.resource.data) || request.resource.data.created_at == resource.data.created_at);
     }
 
     function isValidDream(data) {
@@ -110,13 +189,17 @@ service cloud.firestore {
           'deadline', 'target_date', 'budget', 'estimated_budget', 'budget_notes',
           'media_type', 'media_url', 'primary_media', 'media_history',
           'completed', 'is_completed', 'completed_at', 'affirmation',
-          'created_at', 'updated_at'
+          'created_at', 'updated_at',
+          'whyNote', 'futureDiary', 'targetYearBucket', 'targetDate',
+          'savedAmount', 'budgetMemo', 'linkedFiscalYear', 'linkedPin',
+          'isCompleted', 'completedAt', 'activeMedia', 'mediaHistory',
+          'createdAt', 'updatedAt'
         ]) &&
         data.title is string &&
         data.title.size() >= 1 &&
         data.title.size() <= 200 &&
         data.category is string &&
-        data.category in ['DO', 'HAVE', 'GIVE'] &&
+        data.category in ['DO', 'HAVE', 'GIVE', 'GO', 'BE'] &&
         isValidOptionalString('id', 1, 100) &&
         isValidOptionalString('description', 0, 5000) &&
         isValidOptionalString('vivid_description', 0, 5000) &&
@@ -127,19 +210,78 @@ service cloud.firestore {
         isValidOptionalString('budget_notes', 0, 1000) &&
         (!('media_type' in data) || (data.media_type is string && data.media_type in ['image', 'video'])) &&
         (!('media_url' in data) || (data.media_url is string && isValidMediaUrl(data.media_url))) &&
-        (!('primary_media' in data) || data.primary_media == null || data.primary_media is map) &&
+        isValidOptionalNullableMap('primary_media', 20) &&
         (!('media_history' in data) || (data.media_history is list && data.media_history.size() <= 50)) &&
         isValidOptionalBool('completed') &&
         isValidOptionalBool('is_completed') &&
         (!('completed_at' in data) || data.completed_at == null || (data.completed_at is string && data.completed_at.size() <= 100)) &&
         isValidOptionalString('affirmation', 0, 1000) &&
         isValidOptionalString('created_at', 1, 100) &&
-        isValidOptionalString('updated_at', 1, 100);
+        isValidOptionalString('updated_at', 1, 100) &&
+        isValidOptionalString('whyNote', 0, 1000) &&
+        isValidOptionalNullableMap('futureDiary', 20) &&
+        (!('targetYearBucket' in data) || (data.targetYearBucket is string && data.targetYearBucket in ['1Y', '2Y', '3Y'])) &&
+        isValidOptionalString('targetDate', 0, 100) &&
+        isValidOptionalNumber('savedAmount', 0, 1000000000000) &&
+        isValidOptionalString('budgetMemo', 0, 1000) &&
+        isValidOptionalString('linkedFiscalYear', 0, 30) &&
+        isValidOptionalString('linkedPin', 0, 100) &&
+        isValidOptionalBool('isCompleted') &&
+        (!('completedAt' in data) || data.completedAt == null || (data.completedAt is string && data.completedAt.size() <= 100)) &&
+        isValidOptionalNullableMap('activeMedia', 20) &&
+        (!('activeMedia' in data) || data.activeMedia == null || !('url' in data.activeMedia) || data.activeMedia.url == null || isValidMediaUrl(data.activeMedia.url)) &&
+        (!('mediaHistory' in data) || (data.mediaHistory is list && data.mediaHistory.size() <= 50)) &&
+        isValidOptionalTimestampOrString('createdAt', 1, 100) &&
+        isValidOptionalTimestampOrString('updatedAt', 1, 100);
     }
 
     function areImmutableDreamFieldsUnchanged() {
       return (!('id' in resource.data) || !('id' in request.resource.data) || request.resource.data.id == resource.data.id) &&
-             (!('created_at' in resource.data) || !('created_at' in request.resource.data) || request.resource.data.created_at == resource.data.created_at);
+             (!('created_at' in resource.data) || !('created_at' in request.resource.data) || request.resource.data.created_at == resource.data.created_at) &&
+             (!('createdAt' in resource.data) || !('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidFiscalPlan(data) {
+      return hasRequiredFields(['fiscalYear']) &&
+        hasOnlyAllowedFields([
+          'fiscalYear', 'yearBucket', 'targetPin',
+          'expectedMonthlyIncome', 'expectedAnnualBonus',
+          'monthlyPlan', 'memo', 'updatedAt'
+        ]) &&
+        data.fiscalYear is string &&
+        data.fiscalYear.size() >= 1 &&
+        data.fiscalYear.size() <= 30 &&
+        isValidOptionalString('yearBucket', 0, 20) &&
+        isValidOptionalString('targetPin', 0, 100) &&
+        isValidOptionalNumber('expectedMonthlyIncome', 0, 1000000000000) &&
+        isValidOptionalNumber('expectedAnnualBonus', 0, 1000000000000) &&
+        isValidOptionalMap('monthlyPlan', 24) &&
+        isValidOptionalString('memo', 0, 2000) &&
+        isValidOptionalTimestampOrString('updatedAt', 1, 100);
+    }
+
+    function isValidCoreLog(data) {
+      return hasRequiredFields(['weekId']) &&
+        hasOnlyAllowedFields([
+          'weekId', 'gratitudeAndWhy', 'bookAndAudioInsight',
+          'stpAndConsumerCount', 'productStory', 'nextWeekFocus',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.weekId is string &&
+        data.weekId.size() >= 1 &&
+        data.weekId.size() <= 30 &&
+        isValidOptionalString('gratitudeAndWhy', 0, 5000) &&
+        isValidOptionalString('bookAndAudioInsight', 0, 5000) &&
+        isValidOptionalMap('stpAndConsumerCount', 20) &&
+        isValidOptionalString('productStory', 0, 5000) &&
+        isValidOptionalString('nextWeekFocus', 0, 5000) &&
+        isValidOptionalTimestampOrString('createdAt', 1, 100) &&
+        isValidOptionalTimestampOrString('updatedAt', 1, 100);
+    }
+
+    function areImmutableCoreLogFieldsUnchanged() {
+      return request.resource.data.weekId == resource.data.weekId &&
+             (!('createdAt' in resource.data) || !('createdAt' in request.resource.data) || request.resource.data.createdAt == resource.data.createdAt);
     }
 
     // ===============================================================
@@ -155,13 +297,27 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, delete: if isOwner(userId);
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && areImmutableUserFieldsUnchanged();
 
       // Dream board subcollection: /users/{userId}/dreams/{dreamId}
       match /dreams/{dreamId} {
         allow read, delete: if isOwner(userId);
         allow create: if isOwner(userId) && isValidDream(request.resource.data);
         allow update: if isOwner(userId) && isValidDream(request.resource.data) && areImmutableDreamFieldsUnchanged();
+      }
+
+      // Fiscal plans subcollection: /users/{userId}/fiscalPlans/{pfId}
+      match /fiscalPlans/{pfId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFiscalPlan(request.resource.data);
+        allow update: if isOwner(userId) && isValidFiscalPlan(request.resource.data);
+      }
+
+      // Core logs subcollection: /users/{userId}/coreLogs/{weekId}
+      match /coreLogs/{weekId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCoreLog(request.resource.data);
+        allow update: if isOwner(userId) && isValidCoreLog(request.resource.data) && areImmutableCoreLogFieldsUnchanged();
       }
     }
   }

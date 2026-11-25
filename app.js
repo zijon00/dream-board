@@ -9,7 +9,10 @@ import {
   signOut 
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 import { 
-  getFirestore, 
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection, 
   doc, 
   setDoc, 
@@ -17,6 +20,12 @@ import {
   deleteDoc, 
   onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.9.0/firebase-storage.js";
 
 // Firebase Configuration for project dream-board-vivid
 const firebaseConfig = {
@@ -31,12 +40,56 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Enable Firestore Offline Persistence (IndexedDB cache) with safe fallback
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch (e) {
+  db = getFirestore(app);
+}
+
+const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Current User State
 let currentUser = null;
 let unsubscribeFirestore = null;
+
+// Backward-compatible Dream Schema Adapter (v1.0/v1.1 <-> v1.2)
+function normalizeDream(raw) {
+  if (!raw || typeof raw !== "object") return raw;
+  const budgetVal = Number(raw.estimated_budget ?? raw.budget ?? 0) || 0;
+  const savedVal = Number(raw.savedAmount ?? 0) || 0;
+  const completedVal = Boolean(raw.is_completed ?? raw.isCompleted ?? raw.completed ?? false);
+  const media = raw.primary_media || raw.activeMedia || null;
+  const history = Array.isArray(raw.media_history)
+    ? raw.media_history
+    : (Array.isArray(raw.mediaHistory) ? raw.mediaHistory : []);
+
+  return {
+    ...raw,
+    category: raw.category || "DO",
+    title: raw.title || "",
+    vivid_description: raw.vivid_description ?? raw.description ?? "",
+    deadline: raw.deadline ?? raw.targetDate ?? raw.target_date ?? "",
+    estimated_budget: budgetVal,
+    budget_notes: raw.budget_notes ?? raw.budgetMemo ?? "",
+    affirmation: raw.affirmation || "",
+    whyNote: raw.whyNote || "",
+    futureDiary: raw.futureDiary || null,
+    targetYearBucket: raw.targetYearBucket || "1Y",
+    savedAmount: savedVal,
+    linkedFiscalYear: raw.linkedFiscalYear || "",
+    linkedPin: raw.linkedPin || "",
+    is_completed: completedVal,
+    completed_at: raw.completed_at ?? raw.completedAt ?? null,
+    primary_media: media,
+    media_history: history,
+  };
+}
 
 // Helper: Format Korean Won currency
 function formatKoreanCurrency(amount) {
@@ -152,6 +205,13 @@ const plannerTotalBudget = document.getElementById("planner-total-budget");
 const plannerOnlyUnset = document.getElementById("planner-only-unset");
 const btnSaveAllBudgets = document.getElementById("btn-save-all-budgets");
 
+// Settings & Backup Elements
+const btnSettings = document.getElementById("btn-settings");
+const modalSettings = document.getElementById("modal-settings");
+const settingsModalClose = document.getElementById("settings-modal-close");
+const btnExportJson = document.getElementById("btn-export-json");
+const inputImportJson = document.getElementById("input-import-json");
+
 // Init function (invoked at bottom after all bindings)
 function initApp() {
   setupAuth();
@@ -258,10 +318,10 @@ function subscribeToFirestore(uid) {
   unsubscribeFirestore = onSnapshot(dreamsCol, (snapshot) => {
     const cloudDreams = [];
     snapshot.forEach((doc) => {
-      cloudDreams.push(doc.data());
+      cloudDreams.push(normalizeDream(doc.data()));
     });
     // Sort latest first
-    cloudDreams.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    cloudDreams.sort((a, b) => new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0));
     dreams = cloudDreams;
     saveDreamsLocally();
     updateCounts();
@@ -377,6 +437,19 @@ function setupEventListeners() {
   budgetModalCancel.addEventListener("click", closeBudgetPlannerModal);
   plannerOnlyUnset.addEventListener("change", renderBudgetPlannerList);
   btnSaveAllBudgets.addEventListener("click", saveAllBudgets);
+
+  // Settings & JSON Backup Modal
+  if (btnSettings && modalSettings) {
+    btnSettings.addEventListener("click", () => modalSettings.classList.remove("hidden"));
+    settingsModalClose.addEventListener("click", () => modalSettings.classList.add("hidden"));
+    btnExportJson.addEventListener("click", exportDataAsJson);
+    inputImportJson.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        importDataFromJson(e.target.files[0]);
+        e.target.value = "";
+      }
+    });
+  }
 }
 
 // --- Fetch & Render ---
@@ -395,7 +468,10 @@ function saveDreamsLocally() {
 function loadDreamsLocally() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(normalizeDream) : null;
+    }
   } catch (e) {}
   return null;
 }
@@ -800,20 +876,109 @@ async function setPrimaryMedia(mediaId) {
   }
 }
 
+// Helper: Get Firebase ID Token Authorization headers for /api/* calls
+async function getAuthHeaders() {
+  if (!currentUser) return {};
+  try {
+    const token = await currentUser.getIdToken();
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
+// Helper: Resize & compress image to WebP (maxWidth 1280px) via Canvas
+async function resizeImageToWebP(fileOrBlob, maxWidth = 1280, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(fileOrBlob);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("WebP 변환에 실패했습니다."));
+        },
+        "image/webp",
+        quality
+      );
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("이미지를 읽을 수 없습니다."));
+    };
+    img.src = objectUrl;
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function base64ToBlob(base64, mimeType = "image/png") {
+  const byteChars = atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNumbers[i] = byteChars.charCodeAt(i);
+  }
+  return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+}
+
+// Helper: Upload media to Firebase Storage (/users/{uid}/media/{dreamId}/{fileId}.ext) with graceful Data URL fallback
+async function saveMediaAsset(blobOrFile, dreamId, ext = "webp") {
+  const fileId = "media-" + Date.now();
+  if (currentUser && navigator.onLine) {
+    try {
+      const path = `users/${currentUser.uid}/media/${dreamId}/${fileId}.${ext}`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, blobOrFile);
+      const downloadUrl = await getDownloadURL(ref);
+      return { id: fileId, url: downloadUrl, storagePath: path };
+    } catch (storageErr) {
+      console.warn("Firebase Storage upload unavailable, falling back to inline data URL:", storageErr.message);
+    }
+  }
+  const dataUrl = await blobToDataUrl(blobOrFile);
+  return { id: fileId, url: dataUrl };
+}
+
 async function handleFileUpload(file) {
   if (!currentManagingDreamId) return;
   const d = dreams.find(item => item.id === currentManagingDreamId);
   if (!d) return;
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64Url = e.target.result;
-    const isVideo = file.type.startsWith("video");
+  const isVideo = file.type.startsWith("video");
+  if (isVideo && file.size > 20 * 1024 * 1024) {
+    alert("영상 파일은 20MB 이하만 직접 업로드할 수 있습니다. 큰 영상은 유튜브 링크로 연결해 주세요!");
+    return;
+  }
+
+  try {
+    showToast(isVideo ? "영상을 업로드하는 중..." : "사진을 WebP로 최적화하여 저장하는 중...");
+    const uploadPayload = isVideo ? file : await resizeImageToWebP(file, 1280, 0.82);
+    const ext = isVideo ? (file.name.split(".").pop() || "mp4") : "webp";
+    const saved = await saveMediaAsset(uploadPayload, d.id, ext);
+
     const newMedia = {
-      id: "media-" + Date.now(),
+      id: saved.id,
       media_type: isVideo ? "video" : "image",
-      url: base64Url,
-      thumbnail_url: base64Url,
+      url: saved.url,
+      thumbnail_url: saved.url,
       source: "upload",
       caption: file.name
     };
@@ -824,9 +989,10 @@ async function handleFileUpload(file) {
     saveCurrentDreamToFirestore(d);
     renderMediaHistory(d);
     renderDreams();
-    showToast("미디어가 성공적으로 보존되었습니다!");
-  };
-  reader.readAsDataURL(file);
+    showToast("미디어가 성공적으로 보존되었습니다! ✨");
+  } catch (err) {
+    showToast("파일 처리 중 오류가 발생했습니다: " + err.message);
+  }
 }
 
 async function handleDirectUrlSubmit() {
@@ -863,54 +1029,68 @@ async function performWebSearch() {
   searchLoading.classList.remove("hidden");
   searchResultsGrid.innerHTML = "";
 
-  // Translate Korean query to English for far better global stock/CC photo matches
-  let searchTerm = query;
-  if (/[ㄱ-ㅎ가-힣]/.test(query)) {
-    try {
-      const trRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(query)}`);
-      if (trRes.ok) {
-        const trData = await trRes.json();
-        const translated = trData?.[0]?.[0]?.[0];
-        if (translated) searchTerm = translated;
-      }
-    } catch (e) {}
-  }
-
   const results = [];
   const seenUrls = new Set();
-
   const addResult = (url, title) => {
     if (!url || seenUrls.has(url)) return;
     seenUrls.add(url);
     results.push({ url, title: title || query });
   };
 
-  // Fetch Openverse & Wikimedia Commons in parallel
-  await Promise.allSettled([
-    (async () => {
-      const ovRes = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(searchTerm)}&page_size=9`);
-      if (ovRes.ok) {
-        const ovData = await ovRes.json();
-        for (const item of (ovData.results || [])) {
-          if (item.url) addResult(item.url, item.title);
+  // 1. Try serverless proxy (/api/search-images) when authenticated
+  if (currentUser && navigator.onLine) {
+    try {
+      const headers = await getAuthHeaders();
+      const apiRes = await fetch(`/api/search-images?q=${encodeURIComponent(query)}`, { headers });
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        for (const item of (data.results || [])) {
+          addResult(item.url, item.title);
         }
       }
-    })(),
-    (async () => {
-      const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(searchTerm)}&gsrlimit=9&prop=imageinfo&iiprop=url&format=json&origin=*`;
-      const res = await fetch(wikiUrl);
-      if (res.ok) {
-        const data = await res.json();
-        const pages = data.query?.pages ? Object.values(data.query.pages) : [];
-        for (const p of pages) {
-          const imgUrl = p.imageinfo?.[0]?.url;
-          if (imgUrl && /\.(jpg|jpeg|png|webp)$/i.test(imgUrl)) {
-            addResult(imgUrl, p.title.replace(/^File:/, ""));
+    } catch (e) {}
+  }
+
+  // 2. Client-side fallback (guest mode or offline/proxy unavailable)
+  if (results.length === 0) {
+    let searchTerm = query;
+    if (/[ㄱ-ㅎ가-힣]/.test(query)) {
+      try {
+        const trRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=en&dt=t&q=${encodeURIComponent(query)}`);
+        if (trRes.ok) {
+          const trData = await trRes.json();
+          const translated = trData?.[0]?.[0]?.[0];
+          if (translated) searchTerm = translated;
+        }
+      } catch (e) {}
+    }
+
+    await Promise.allSettled([
+      (async () => {
+        const ovRes = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(searchTerm)}&page_size=9`);
+        if (ovRes.ok) {
+          const ovData = await ovRes.json();
+          for (const item of (ovData.results || [])) {
+            if (item.url) addResult(item.url, item.title);
           }
         }
-      }
-    })()
-  ]);
+      })(),
+      (async () => {
+        const wikiUrl = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(searchTerm)}&gsrlimit=9&prop=imageinfo&iiprop=url&format=json&origin=*`;
+        const res = await fetch(wikiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          const pages = data.query?.pages ? Object.values(data.query.pages) : [];
+          for (const p of pages) {
+            const imgUrl = p.imageinfo?.[0]?.url;
+            if (imgUrl && /\.(jpg|jpeg|png|webp)$/i.test(imgUrl)) {
+              addResult(imgUrl, p.title.replace(/^File:/, ""));
+            }
+          }
+        }
+      })()
+    ]);
+  }
 
   searchLoading.classList.add("hidden");
 
@@ -966,77 +1146,129 @@ async function handleAiGenerate() {
   const d = dreams.find(item => item.id === currentManagingDreamId);
   if (!d) return;
 
+  if (!currentUser) {
+    alert("AI 상상도 생성은 구글 로그인 후 이용할 수 있습니다.");
+    return;
+  }
+
   aiLoading.classList.remove("hidden");
 
   try {
-    const res = await fetch(`/api/dreams/${currentManagingDreamId}/media/ai-generate`, { method: "POST" });
-    aiLoading.classList.add("hidden");
-    if (res.ok) {
-      const data = await res.json();
-      const newMedia = data.primary_media || {
-        id: "media-" + Date.now(),
-        url: `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1200&auto=format&fit=crop&q=80`,
-        thumbnail_url: `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&auto=format&fit=crop&q=80`,
-        source: "ai_generated",
-        caption: `AI 생성: ${d.title}`
-      };
-      if (!d.media_history) d.media_history = [];
-      d.media_history.unshift(newMedia);
-      d.primary_media = newMedia;
-      saveDreamsLocally();
-      renderMediaHistory(d);
-      renderDreams();
-      showToast("Gemini가 완성한 상상도가 등록되었습니다! ✨");
+    const headers = await getAuthHeaders();
+    const res = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        title: d.title,
+        description: d.vivid_description || "",
+        category: d.category || "DO"
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `서버 오류 (${res.status})`);
     }
-  } catch (err) {
-    aiLoading.classList.add("hidden");
-    // Offline fallback for AI imagination
-    const fallbackMedia = {
-      id: "media-" + Date.now(),
-      url: `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1200&auto=format&fit=crop&q=80`,
-      thumbnail_url: `https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&auto=format&fit=crop&q=80`,
+
+    const data = await res.json();
+    const rawBlob = base64ToBlob(data.base64, data.mimeType || "image/png");
+    const webpBlob = await resizeImageToWebP(rawBlob, 1280, 0.85);
+    const saved = await saveMediaAsset(webpBlob, d.id, "webp");
+
+    const newMedia = {
+      id: saved.id,
+      url: saved.url,
+      thumbnail_url: saved.url,
+      media_type: "image",
       source: "ai_generated",
-      caption: `AI 상상도: ${d.title}`
+      caption: `AI 생성: ${d.title}`
     };
     if (!d.media_history) d.media_history = [];
-    d.media_history.unshift(fallbackMedia);
-    d.primary_media = fallbackMedia;
+    d.media_history.unshift(newMedia);
+    d.primary_media = newMedia;
     saveDreamsLocally();
+    saveCurrentDreamToFirestore(d);
     renderMediaHistory(d);
     renderDreams();
-    showToast("상상 이미지가 등록되었습니다! ✨");
+    showToast("Gemini가 완성한 상상도가 등록되었습니다! ✨");
+  } catch (err) {
+    showToast("AI 생성 실패: " + err.message);
+  } finally {
+    aiLoading.classList.add("hidden");
   }
 }
 
 async function handleAiSynthesize() {
   if (!currentManagingDreamId) return;
+  const d = dreams.find(item => item.id === currentManagingDreamId);
+  if (!d) return;
+
+  if (!currentUser) {
+    alert("AI 인물 합성은 구글 로그인 후 이용할 수 있습니다.");
+    return;
+  }
   if (!synthRefFile.files || synthRefFile.files.length === 0) {
     alert("합성할 인물/가족 사진을 먼저 선택해 주세요!");
     return;
   }
 
-  const formData = new FormData();
-  formData.append("reference_file", synthRefFile.files[0]);
-  formData.append("custom_request", synthCustomPrompt.value.trim());
-
   aiLoading.classList.remove("hidden");
 
   try {
-    const res = await fetch(`/api/dreams/${currentManagingDreamId}/media/ai-synthesize`, {
+    // Compress reference photo before sending to serverless function (keeps payload small)
+    const refWebp = await resizeImageToWebP(synthRefFile.files[0], 1024, 0.82);
+    const refDataUrl = await blobToDataUrl(refWebp);
+    const refBase64 = refDataUrl.split(",")[1];
+
+    const headers = await getAuthHeaders();
+    const res = await fetch("/api/generate-image", {
       method: "POST",
-      body: formData
+      headers: { "Content-Type": "application/json", ...headers },
+      body: JSON.stringify({
+        title: d.title,
+        description: d.vivid_description || "",
+        category: d.category || "DO",
+        referenceImageBase64: refBase64,
+        referenceMimeType: "image/webp",
+        customPrompt: synthCustomPrompt.value.trim()
+      })
     });
-    aiLoading.classList.add("hidden");
-    if (res.ok) {
-      const updated = await res.json();
-      synthCustomPrompt.value = "";
-      renderMediaHistory(updated);
-      await fetchDreams();
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `서버 오류 (${res.status})`);
+    }
+
+    const data = await res.json();
+    const rawBlob = base64ToBlob(data.base64, data.mimeType || "image/png");
+    const webpBlob = await resizeImageToWebP(rawBlob, 1280, 0.85);
+    const saved = await saveMediaAsset(webpBlob, d.id, "webp");
+
+    const newMedia = {
+      id: saved.id,
+      url: saved.url,
+      thumbnail_url: saved.url,
+      media_type: "image",
+      source: data.fallbackUsed ? "ai_generated" : "ai_synthesized",
+      caption: data.fallbackUsed ? `AI 상상도: ${d.title}` : `인물 합성: ${d.title}`
+    };
+    if (!d.media_history) d.media_history = [];
+    d.media_history.unshift(newMedia);
+    d.primary_media = newMedia;
+    synthCustomPrompt.value = "";
+    saveDreamsLocally();
+    saveCurrentDreamToFirestore(d);
+    renderMediaHistory(d);
+    renderDreams();
+    if (data.fallbackUsed) {
+      showToast("인물 합성 대신 생생한 AI 상상도로 안전하게 생성되었습니다! ✨");
+    } else {
       showToast("인물 합성 이미지가 생성되었습니다! 🎨");
     }
   } catch (err) {
+    showToast("합성 중 오류가 발생했습니다: " + err.message);
+  } finally {
     aiLoading.classList.add("hidden");
-    showToast("합성 중 오류가 발생했습니다.");
   }
 }
 
@@ -1299,6 +1531,67 @@ async function saveAllBudgets() {
         changedDreams.map(d => setDoc(doc(db, "users", currentUser.uid, "dreams", d.id), d, { merge: true }))
       );
     } catch (err) {}
+  }
+}
+
+// --- JSON One-Click Backup / Restore ---
+
+function exportDataAsJson() {
+  const backup = {
+    version: "1.2",
+    exportedAt: new Date().toISOString(),
+    dreams
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dream-board-backup-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast("꿈보드 백업 JSON 파일이 저장되었습니다! 💾");
+}
+
+async function importDataFromJson(file) {
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const importedDreams = Array.isArray(parsed) ? parsed : parsed.dreams;
+    if (!Array.isArray(importedDreams)) {
+      alert("올바른 꿈보드 백업 JSON 형식이 아닙니다.");
+      return;
+    }
+
+    if (!confirm(`총 ${importedDreams.length}개의 꿈을 불러오시겠습니까? 기존 목록과 병합됩니다.`)) return;
+
+    const existingMap = new Map(dreams.map(d => [d.id, d]));
+    const restoredList = [];
+    for (const raw of importedDreams) {
+      const normalized = normalizeDream(raw);
+      if (normalized && normalized.id && normalized.title) {
+        existingMap.set(normalized.id, normalized);
+        restoredList.push(normalized);
+      }
+    }
+
+    dreams = Array.from(existingMap.values()).sort(
+      (a, b) => new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0)
+    );
+    saveDreamsLocally();
+    updateCounts();
+    renderDreams();
+    modalSettings.classList.add("hidden");
+    showToast(`${restoredList.length}개의 꿈이 성공적으로 복원되었습니다! ✨`);
+
+    if (currentUser && restoredList.length > 0) {
+      await Promise.all(
+        restoredList.map(d => setDoc(doc(db, "users", currentUser.uid, "dreams", d.id), d, { merge: true }))
+      );
+    }
+  } catch (err) {
+    alert("백업 파일 불러오기 실패: " + err.message);
   }
 }
 
