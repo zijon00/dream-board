@@ -46,15 +46,21 @@
           <i class="fa-solid fa-wand-magic-sparkles text-base sm:text-xl text-white"></i>
         </div>
         <div class="min-w-0">
-          <h1 class="text-lg sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent truncate">
-            나의 생생한 꿈보드
-          </h1>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg sm:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-purple-100 to-purple-300 bg-clip-text text-transparent truncate">
+              나의 생생한 꿈보드
+            </h1>
+            <span id="streak-badge" class="hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-orange-950/60 border border-orange-500/40 text-orange-300 text-[11px] font-bold shrink-0">
+              <span>🔥</span>
+              <span id="streak-count-text">0일 연속</span>
+            </span>
+          </div>
           <p class="text-xs text-slate-400 hidden sm:block">"상상할 수 있다면 이미 현실이 되기 시작한 것이다"</p>
         </div>
       </div>
 
       <!-- Actions -->
-      <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+      <div class="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
         <!-- Auth Container -->
         <div id="auth-container" class="flex items-center">
           <button id="btn-login" onclick="window.doGoogleLoginFallback()" class="px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center space-x-1.5 sm:space-x-2">
@@ -70,9 +76,17 @@
           </div>
         </div>
 
+        <button id="btn-dream-100" class="hidden md:flex px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 text-xs sm:text-sm font-semibold transition items-center space-x-1.5">
+          <i class="fa-solid fa-list-check"></i>
+          <span>꿈 100가지</span>
+        </button>
+        <button id="btn-nav-diary-top" class="hidden md:flex px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-xs sm:text-sm font-semibold transition items-center space-x-1.5">
+          <i class="fa-solid fa-book-open"></i>
+          <span>미래일기</span>
+        </button>
         <button id="btn-slideshow" class="px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-purple-300 border border-purple-500/30 text-xs sm:text-sm font-semibold transition flex items-center space-x-1.5 sm:space-x-2 shadow-sm">
           <i class="fa-solid fa-play"></i>
-          <span class="hidden sm:inline">시각화 명상 모드</span>
+          <span class="hidden sm:inline">시각화 명상</span>
           <span class="sm:hidden">명상</span>
         </button>
         <button id="btn-settings" class="p-2 sm:p-2.5 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs sm:text-sm transition" title="설정 및 데이터 백업">
@@ -86,21 +100,27 @@
     </div>
 
     <!-- Category Tabs & Stats Filter -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-800/40">
-      <!-- Horizontally Scrollable Tabs on Mobile -->
+    <div id="header-subbar" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-t border-slate-800/40">
+      <!-- Horizontally Scrollable 5-Category Tabs -->
       <div class="w-full sm:w-auto overflow-x-auto no-scrollbar">
         <div class="inline-flex items-center space-x-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 min-w-max">
-          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition active-tab bg-purple-600 text-white" data-cat="ALL">
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition active-tab bg-purple-600 text-white" data-cat="ALL">
             전체 (<span id="count-all">0</span>)
           </button>
-          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="DO">
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="DO">
             🏃 하고 싶은 것 (<span id="count-do">0</span>)
           </button>
-          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="HAVE">
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="HAVE">
             💎 갖고 싶은 것 (<span id="count-have">0</span>)
           </button>
-          <button class="cat-tab whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="GIVE">
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="GIVE">
             💝 해주고 싶은 것 (<span id="count-give">0</span>)
+          </button>
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="GO">
+            ✈️ 가고 싶은 곳 (<span id="count-go">0</span>)
+          </button>
+          <button class="cat-tab whitespace-nowrap px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition" data-cat="BE">
+            🌟 되고 싶은 사람 (<span id="count-be">0</span>)
           </button>
         </div>
       </div>
@@ -110,9 +130,9 @@
         <!-- Interactive Total Budget & Budget Planner Button -->
         <button id="btn-budget-planner" class="flex items-center space-x-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-amber-950/50 hover:bg-amber-900/60 active:scale-95 border border-amber-500/40 text-amber-300 text-[11px] sm:text-xs font-semibold transition cursor-pointer shadow-sm">
           <i class="fa-solid fa-sack-dollar text-amber-400"></i>
-          <span>총 예산:</span>
+          <span>목표:</span>
           <span id="total-budget-sum" class="font-bold text-amber-200">0원</span>
-          <span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[10px] font-bold border border-amber-500/30">예산 정리</span>
+          <span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 text-[10px] font-bold border border-amber-500/30">목표/예산</span>
         </button>
 
         <div class="flex items-center space-x-2 sm:space-x-3">
@@ -135,32 +155,143 @@
   </header>
 
   <!-- Main Content -->
-  <main class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 pb-28 sm:pb-12 flex-1 w-full">
-    <!-- Grid Board -->
-    <div id="dreams-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-      <!-- Dream cards inserted dynamically -->
-    </div>
-
-    <!-- Empty State -->
-    <div id="empty-state" class="hidden text-center py-20 sm:py-24 px-4">
-      <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl sm:text-3xl mb-4">
-        <i class="fa-regular fa-compass"></i>
+  <main class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-7 pb-32 sm:pb-12 flex-1 w-full space-y-5">
+    <!-- Top Collapsible My Why Banner -->
+    <section id="my-why-banner" class="glass-panel rounded-2xl p-3.5 sm:p-4 border border-purple-500/30 bg-gradient-to-r from-purple-950/40 via-slate-900/60 to-indigo-950/40">
+      <div class="flex items-center justify-between">
+        <button id="btn-toggle-why" class="flex items-center space-x-2 text-left min-w-0 flex-1">
+          <span class="w-7 h-7 rounded-lg bg-purple-600/30 border border-purple-400/30 flex items-center justify-center text-purple-300 text-xs shrink-0">
+            <i class="fa-solid fa-compass"></i>
+          </span>
+          <div class="min-w-0">
+            <span class="text-xs sm:text-sm font-bold text-purple-200">내가 꿈을 이루려는 핵심 이유 (My Why 3가지)</span>
+            <span class="sm:hidden ml-2 text-[10px] text-orange-300 font-bold">🔥 <span id="streak-count-mobile">0일</span></span>
+          </div>
+          <i id="why-chevron" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+        </button>
+        <button id="btn-edit-why" class="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-purple-300 text-[11px] font-semibold border border-slate-700 shrink-0 ml-2">
+          <i class="fa-solid fa-pen mr-1"></i>편집
+        </button>
       </div>
-      <h3 class="text-base sm:text-lg font-bold text-slate-300">등록된 꿈이 없습니다</h3>
-      <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-        마음속에 품고 있던 하고 싶은 것, 갖고 싶은 것, 해주고 싶은 것을 첫 번째 카드로 작성해 보세요!
-      </p>
-      <button onclick="document.getElementById('btn-add-dream').click()" class="mt-5 px-5 py-3 rounded-xl bg-purple-600 active:scale-95 hover:bg-purple-500 text-white font-semibold text-sm transition">
-        지금 첫 꿈 등록하기
-      </button>
-    </div>
+      <div id="my-why-list" class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-200">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- View 1: Dream Board -->
+    <section id="section-dream-board">
+      <div id="dreams-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Dream cards inserted dynamically -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-state" class="hidden text-center py-16 sm:py-24 px-4">
+        <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl sm:text-3xl mb-4">
+          <i class="fa-regular fa-compass"></i>
+        </div>
+        <h3 class="text-base sm:text-lg font-bold text-slate-300">등록된 꿈이 없습니다</h3>
+        <p class="text-xs sm:text-sm text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+          마음속에 품고 있던 하고 싶은 것, 갖고 싶은 것, 해주고 싶은 것, 가고 싶은 곳, 되고 싶은 사람을 첫 번째 카드로 작성해 보세요!
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-2.5">
+          <button onclick="document.getElementById('btn-add-dream').click()" class="px-5 py-3 rounded-xl bg-purple-600 active:scale-95 hover:bg-purple-500 text-white font-semibold text-sm transition">
+            지금 첫 꿈 등록하기
+          </button>
+          <button onclick="window.openDream100Modal()" class="px-5 py-3 rounded-xl bg-slate-800 active:scale-95 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 font-semibold text-sm transition">
+            꿈 100가지부터 적기
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- View 2: Future Diary Timeline -->
+    <section id="section-future-diary" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-book-open text-emerald-400"></i>
+            <span>미래 일기 (Future Diary)</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">꿈이 이미 이루어진 미래의 어느 날을 현재형으로 생생하게 기록해 보세요.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-back-to-board" class="hidden sm:inline-flex px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+            꿈보드로 돌아가기
+          </button>
+          <button id="btn-new-diary" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-600/20 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-feather-pointed"></i>
+            <span>미래일기 쓰기</span>
+          </button>
+        </div>
+      </div>
+      <div id="future-diary-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
   </main>
 
   <!-- Mobile Floating Action Button (FAB) -->
-  <button onclick="document.getElementById('btn-add-dream').click()" class="sm:hidden fixed bottom-6 right-5 z-40 px-5 py-3.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 active:scale-95 text-white text-sm font-bold shadow-2xl shadow-purple-600/50 border border-purple-400/30 flex items-center space-x-2 transition">
-    <i class="fa-solid fa-plus text-base"></i>
-    <span>새 꿈 등록</span>
+  <button id="btn-fab-add" onclick="document.getElementById('btn-add-dream').click()" class="sm:hidden fixed bottom-20 right-4 z-40 px-4 py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 active:scale-95 text-white text-xs font-bold shadow-2xl shadow-purple-600/50 border border-purple-400/30 flex items-center space-x-1.5 transition">
+    <i class="fa-solid fa-plus text-sm"></i>
+    <span>새 꿈</span>
   </button>
+
+  <!-- Mobile Bottom Fixed Navigation Bar -->
+  <nav id="mobile-bottom-nav" class="sm:hidden fixed bottom-0 left-0 right-0 z-40 glass-panel border-t border-slate-800/90 px-2 py-1.5 pb-safe grid grid-cols-5 gap-1 text-[10px] font-semibold">
+    <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-purple-400" data-nav="board">
+      <i class="fa-solid fa-wand-magic-sparkles text-base mb-0.5"></i>
+      <span>꿈보드</span>
+    </button>
+    <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="dream100">
+      <i class="fa-solid fa-list-check text-base mb-0.5"></i>
+      <span>꿈 100</span>
+    </button>
+    <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="diary">
+      <i class="fa-solid fa-book-open text-base mb-0.5"></i>
+      <span>미래일기</span>
+    </button>
+    <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="budget">
+      <i class="fa-solid fa-sack-dollar text-base mb-0.5"></i>
+      <span>목표/예산</span>
+    </button>
+    <button class="mobile-nav-btn flex flex-col items-center justify-center py-1 text-slate-400" data-nav="meditate">
+      <i class="fa-solid fa-play text-base mb-0.5"></i>
+      <span>명상</span>
+    </button>
+  </nav>
+
+  <!-- Edit My Why (3 Reasons) Modal -->
+  <div id="modal-why" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+    <div class="glass-modal w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-7 pb-safe relative max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="why-modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h2 class="text-lg sm:text-xl font-bold text-white mb-1 flex items-center space-x-2">
+        <i class="fa-solid fa-compass text-purple-400"></i>
+        <span>나의 Why 3가지</span>
+      </h2>
+      <p class="text-xs text-slate-400 mb-4">내가 이 일을 하고 꿈을 이루려는 가장 중요한 이유 3가지를 적어보세요.</p>
+      <form id="why-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-purple-300 mb-1">1번째 이유</label>
+          <input type="text" id="why-input-1" placeholder="예: 사랑하는 가족과 시간·경제적 자유를 누리기 위해" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-purple-300 mb-1">2번째 이유</label>
+          <input type="text" id="why-input-2" placeholder="예: 부모님께 건강한 노후와 여행을 선물하기 위해" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-purple-300 mb-1">3번째 이유</label>
+          <input type="text" id="why-input-3" placeholder="예: 누군가의 꿈을 돕는 선한 영향력의 리더가 되기 위해" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+        </div>
+        <div class="flex space-x-3 pt-3 border-t border-slate-800">
+          <button type="button" id="why-modal-cancel" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold">취소</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Create/Edit Dream Modal -->
   <div id="modal-dream" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
@@ -169,66 +300,104 @@
       <button id="modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
         <i class="fa-solid fa-xmark"></i>
       </button>
-      <h2 id="modal-title" class="text-lg sm:text-xl font-bold text-white mb-5 sm:mb-6 flex items-center space-x-2">
+      <h2 id="modal-title" class="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-5 flex items-center space-x-2">
         <span class="text-purple-400"><i class="fa-solid fa-sparkles"></i></span>
         <span>꿈 등록하기</span>
       </h2>
 
-      <form id="dream-form" class="space-y-4 sm:space-y-5">
+      <!-- Inspiration Question Chips -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] font-bold text-indigo-300"><i class="fa-solid fa-wand-sparkles mr-1"></i>영감 질문 카드 (클릭해 보세요)</span>
+        </div>
+        <div id="inspiration-chips" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <!-- Populated dynamically by category -->
+        </div>
+      </div>
+
+      <form id="dream-form" class="space-y-4">
         <input type="hidden" id="form-dream-id" />
 
-        <!-- Category Selector -->
+        <!-- 5 Category Selector -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">카테고리</label>
-          <div class="grid grid-cols-3 gap-2">
-            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">5대 카테고리</label>
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <label class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="DO" checked class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold leading-tight">🏃<br class="sm:hidden" /> 하고 싶은 것</span>
+              <span class="text-base sm:text-lg">🏃</span>
+              <span class="text-[10px] sm:text-xs font-semibold mt-0.5">하고싶은것</span>
             </label>
-            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
+            <label class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="HAVE" class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold leading-tight">💎<br class="sm:hidden" /> 갖고 싶은 것</span>
+              <span class="text-base sm:text-lg">💎</span>
+              <span class="text-[10px] sm:text-xs font-semibold mt-0.5">갖고싶은것</span>
             </label>
-            <label class="flex flex-col sm:flex-row items-center justify-center p-2.5 sm:p-3 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
+            <label class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
               <input type="radio" name="form-cat" value="GIVE" class="hidden" />
-              <span class="text-xs sm:text-sm font-semibold leading-tight">💝<br class="sm:hidden" /> 해주고 싶은 것</span>
+              <span class="text-base sm:text-lg">💝</span>
+              <span class="text-[10px] sm:text-xs font-semibold mt-0.5">해주고싶은것</span>
+            </label>
+            <label class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
+              <input type="radio" name="form-cat" value="GO" class="hidden" />
+              <span class="text-base sm:text-lg">✈️</span>
+              <span class="text-[10px] sm:text-xs font-semibold mt-0.5">가고싶은곳</span>
+            </label>
+            <label class="flex flex-col items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/60 cursor-pointer hover:border-purple-500/50 transition has-[:checked]:border-purple-500 has-[:checked]:bg-purple-950/40 text-center">
+              <input type="radio" name="form-cat" value="BE" class="hidden" />
+              <span class="text-base sm:text-lg">🌟</span>
+              <span class="text-[10px] sm:text-xs font-semibold mt-0.5">되고싶은사람</span>
             </label>
           </div>
         </div>
 
         <!-- Title -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">소망 제목 *</label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">소망 제목 *</label>
           <input type="text" id="form-title" required placeholder="예: 스위스 융프라우에서 오로라 감상하기" class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-base sm:text-sm text-white" />
         </div>
 
-        <!-- Vivid Description -->
+        <!-- Why Note (One line reason) -->
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
-            생생한 묘사 (Vivid Description)
-            <span class="text-slate-500 font-normal text-[11px] block sm:inline sm:ml-1">이루어졌을 때 눈앞에 무엇이 보이고 어떤 기분인가요?</span>
-          </label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">이 꿈을 꾸는 진짜 이유 (Why 한 줄)</label>
+          <input type="text" id="form-why-note" placeholder="예: 부모님이 건강하실 때 평생 기억에 남을 웃음을 선물하고 싶다" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+        </div>
+
+        <!-- Vivid Description + AI Refine Button -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">
+              생생한 묘사 (Vivid Description)
+            </label>
+            <button type="button" id="btn-ai-refine" class="px-2.5 py-1 rounded-lg bg-indigo-600/80 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center space-x-1">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>AI 묘사·확언 다듬기</span>
+            </button>
+          </div>
           <textarea id="form-vivid-desc" rows="3" placeholder="예: 알프스의 새하얀 설산을 바라보며 따뜻한 핫초코를 손에 쥐고, 마음 깊은 곳에서 올라오는 평온과 자유로움을 만끽한다." class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-base sm:text-sm text-white leading-relaxed"></textarea>
         </div>
 
-        <!-- Target Date & Affirmation (Pure Dreaming Mode - No budget interruption!) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Target Year Bucket, Deadline & Affirmation -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">
-              <i class="fa-regular fa-clock text-purple-400 mr-1"></i>목표 달성 시한 (D-Day)
-            </label>
-            <input type="date" id="form-deadline" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
-            <span class="text-[10px] text-slate-500 mt-1 block">구체적인 마감일(D-Day)을 설정하면 실시간 카운트다운이 표시됩니다.</span>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">목표 연차 & 시한 (D-Day)</label>
+            <div class="flex space-x-2">
+              <select id="form-year-bucket" class="px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-sm text-purple-200 font-semibold">
+                <option value="1Y">1년 후</option>
+                <option value="2Y">2년 후</option>
+                <option value="3Y">3년 후</option>
+              </select>
+              <input type="date" id="form-deadline" class="flex-1 px-3 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
+            </div>
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5 sm:mb-2">다짐의 한마디 (Affirmation)</label>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">다짐의 한마디 (현재형 확언)</label>
             <input type="text" id="form-affirmation" placeholder="예: 나는 전 세계를 자유롭게 누비는 존재다" class="w-full px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 focus:border-purple-500 outline-none text-base sm:text-sm text-white" />
           </div>
         </div>
 
         <div class="p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 text-amber-300/90 text-[11px] flex items-center space-x-2">
           <i class="fa-solid fa-lightbulb text-amber-400 shrink-0"></i>
-          <span>먼저 꿈을 마음껏 작성하세요! 예상 금액은 나중에 상단 <strong>[예산 정리]</strong>에서 검색과 함께 한눈에 입력할 수 있습니다.</span>
+          <span>먼저 꿈을 마음껏 작성하세요! 예상 금액은 상단 <strong>[목표/예산]</strong>에서 연차별로 편하게 정리할 수 있습니다.</span>
         </div>
 
         <div class="flex space-x-3 pt-4 border-t border-slate-800">
@@ -243,7 +412,82 @@
     </div>
   </div>
 
-  <!-- Budget Planner & Price Search Modal -->
+  <!-- Dream 100 Quick Input Modal -->
+  <div id="modal-dream-100" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-modal w-full max-w-2xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-8 pb-safe relative max-h-[92vh] overflow-y-auto shadow-2xl">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="dream100-modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="mb-4 pr-8">
+        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-700/60">
+          ✨ DREAM 100 DISCOVERY
+        </span>
+        <h2 class="text-lg sm:text-xl font-bold text-white mt-2 flex items-center justify-between">
+          <span>꿈 100가지 빠른 기록</span>
+          <span id="dream100-counter" class="text-xs font-bold text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-500/30">0 / 100</span>
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">사진이나 세부 계획 없이 떠오르는 소망을 가볍게 100가지까지 적어보세요. 언제든 정식 꿈 카드로 승격할 수 있습니다.</p>
+      </div>
+
+      <form id="dream100-form" class="flex space-x-2 mb-4">
+        <select id="dream100-cat" class="px-2.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-semibold text-white outline-none">
+          <option value="DO">🏃 하고싶은</option>
+          <option value="HAVE">💎 갖고싶은</option>
+          <option value="GIVE">💝 해주고싶은</option>
+          <option value="GO">✈️ 가고싶은</option>
+          <option value="BE">🌟 되고싶은</option>
+        </select>
+        <input type="text" id="dream100-input" required placeholder="떠오른 꿈 한 줄 입력 후 추가..." class="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-indigo-500 outline-none text-base sm:text-sm text-white" />
+        <button type="submit" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0">추가</button>
+      </form>
+
+      <div id="dream100-list" class="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Future Diary Modal -->
+  <div id="modal-future-diary" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div class="glass-modal w-full max-w-lg rounded-t-3xl sm:rounded-2xl p-5 sm:p-7 pb-safe relative max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
+      <button id="diary-modal-close" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800/60 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h2 class="text-lg sm:text-xl font-bold text-white mb-1 flex items-center space-x-2">
+        <i class="fa-solid fa-book-open text-emerald-400"></i>
+        <span>미래 일기 작성</span>
+      </h2>
+      <p class="text-xs text-slate-400 mb-4">꿈이 이미 이루어진 미래의 하루를 현재 시제로 생생하게 기록해 보세요.</p>
+      <form id="diary-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-400 mb-1">연결할 꿈 선택 *</label>
+          <select id="diary-dream-select" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-emerald-500 outline-none text-base sm:text-sm text-white"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">미래 날짜</label>
+            <input type="date" id="diary-date" required class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-emerald-500 outline-none text-base sm:text-sm text-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">그날의 날씨 / 기분</label>
+            <input type="text" id="diary-weather" placeholder="예: 맑고 상쾌한 아침" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-emerald-500 outline-none text-base sm:text-sm text-white" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-400 mb-1">미래 일기 내용 (현재형) *</label>
+          <textarea id="diary-content" rows="4" required placeholder="오늘 드디어 꿈에 그리던..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus:border-emerald-500 outline-none text-base sm:text-sm text-white leading-relaxed"></textarea>
+        </div>
+        <div class="flex space-x-3 pt-3 border-t border-slate-800">
+          <button type="button" id="diary-modal-cancel" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold">취소</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold">일기 저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Budget Planner, Progress & Income Simulator Modal -->
   <div id="modal-budget-planner" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
     <div class="glass-modal w-full max-w-3xl rounded-t-3xl sm:rounded-2xl p-5 sm:p-8 pb-safe relative max-h-[92vh] overflow-y-auto shadow-2xl">
       <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4 sm:hidden"></div>
@@ -253,29 +497,74 @@
 
       <div class="mb-4 pr-8">
         <span class="px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-amber-950 text-amber-300 border border-amber-700/60">
-          💰 BUDGET PLANNER
+          💰 1~3년 목표 예산 & 꿈 앞당기기
         </span>
         <h2 class="text-lg sm:text-xl font-bold text-white mt-2">
-          꿈 예산 정리 & 시세 검색
+          연차별 목표 예산 정리 & 달성 시뮬레이터
         </h2>
-        <p class="text-xs text-slate-400 mt-1">작성해 둔 꿈 리스트를 불러와 가격/비용을 검색하고 예상 예산을 정리하세요.</p>
+        <p class="text-xs text-slate-400 mt-1">연차별로 꿈 예산을 정리하고, 지금까지 준비한 금액의 달성률과 추가 수입 시 꿈이 얼마나 앞당겨지는지 확인하세요.</p>
       </div>
 
-      <!-- Summary & Filter Bar -->
-      <div class="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 mb-4">
-        <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-sack-dollar text-amber-400 text-base"></i>
-          <span class="text-xs text-slate-400">총 필요 예산 합계:</span>
-          <span id="planner-total-budget" class="text-sm sm:text-base font-extrabold text-amber-300">0원</span>
+      <!-- Year Bucket Tabs (전체 / 1Y / 2Y / 3Y) -->
+      <div class="flex items-center justify-between gap-2 mb-3 overflow-x-auto no-scrollbar">
+        <div class="inline-flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 min-w-max">
+          <button class="planner-year-tab px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-600 text-white" data-year="ALL">전체</button>
+          <button class="planner-year-tab px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white" data-year="1Y">1년 후</button>
+          <button class="planner-year-tab px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white" data-year="2Y">2년 후</button>
+          <button class="planner-year-tab px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white" data-year="3Y">3년 후</button>
         </div>
-        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+        <label class="flex items-center space-x-1.5 text-xs text-slate-300 cursor-pointer shrink-0">
           <input type="checkbox" id="planner-only-unset" class="rounded bg-slate-800 border-slate-700 text-amber-500 focus:ring-0">
-          <span>금액 미정(0원)만 보기</span>
+          <span>미정(0원)만</span>
         </label>
       </div>
 
+      <!-- Positive Achievement Progress Bar -->
+      <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 mb-3 space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-sack-dollar text-amber-400"></i>
+            <span class="text-xs text-slate-400">남은 목표 합계:</span>
+            <span id="planner-total-budget" class="text-sm sm:text-base font-extrabold text-amber-300">0원</span>
+          </div>
+          <span id="planner-progress-text" class="text-xs font-bold text-emerald-300">달성률 0% (준비됨 0원)</span>
+        </div>
+        <div class="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+          <div id="planner-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-400 transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Optional Stress-Free Income Simulator Accordion -->
+      <details class="mb-4 rounded-xl bg-indigo-950/30 border border-indigo-500/30 p-3.5">
+        <summary class="text-xs sm:text-sm font-bold text-indigo-200 cursor-pointer flex items-center justify-between list-none">
+          <span><i class="fa-solid fa-rocket text-indigo-400 mr-1.5"></i>꿈 앞당기기 수입 시뮬레이터 펼쳐보기</span>
+          <span class="text-[11px] text-indigo-300 underline">열기/닫기</span>
+        </summary>
+        <div class="mt-3 pt-3 border-t border-indigo-500/20 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] text-slate-300 mb-1">현재 월 저축 여력 (원)</label>
+              <input type="number" id="sim-monthly-saving" min="0" step="100000" value="1000000" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-sm text-white outline-none focus:border-indigo-400" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-300 mb-1">추가 월 수입 시뮬레이션 (ΔI)</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" class="sim-preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-xs font-bold text-slate-200 transition" data-delta="0">기본(+0)</button>
+                <button type="button" class="sim-preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-xs font-bold text-indigo-200 transition" data-delta="500000">+50만</button>
+                <button type="button" class="sim-preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-xs font-bold text-indigo-200 transition" data-delta="1000000">+100만</button>
+                <button type="button" class="sim-preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-xs font-bold text-indigo-200 transition" data-delta="2000000">+200만</button>
+                <button type="button" class="sim-preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-xs font-bold text-indigo-200 transition" data-delta="3000000">+300만</button>
+              </div>
+            </div>
+          </div>
+          <div id="sim-result-box" class="p-3 rounded-xl bg-slate-950/70 border border-indigo-500/30 text-xs text-slate-200 leading-relaxed">
+            <!-- Calculated dynamically -->
+          </div>
+        </div>
+      </details>
+
       <!-- Dream Budget List -->
-      <div id="budget-list-container" class="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
+      <div id="budget-list-container" class="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
         <!-- Populated dynamically -->
       </div>
 
@@ -425,47 +714,69 @@
   </div>
 
   <!-- Fullscreen Visualization Meditation Slideshow -->
-  <div id="modal-slideshow" class="fixed inset-0 z-50 hidden bg-black/95 flex flex-col justify-between p-6 sm:p-12 transition-all duration-700">
-    <!-- Top info & close -->
-    <div class="flex items-center justify-between z-10">
-      <div class="flex items-center space-x-3">
+  <div id="modal-slideshow" class="fixed inset-0 z-50 hidden bg-black/95 flex flex-col justify-between p-4 sm:p-10 transition-all duration-700 overflow-y-auto">
+    <!-- Top info, audio/interval controls & close -->
+    <div class="flex flex-wrap items-center justify-between gap-2 z-10">
+      <div class="flex items-center space-x-2 sm:space-x-3">
         <span id="slide-cat-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-900/80 text-purple-200 border border-purple-500/40">
           DO
         </span>
         <span id="slide-counter" class="text-xs text-slate-400 font-mono">1 / 5</span>
+        <select id="slide-interval-select" class="px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-[11px] text-slate-200 outline-none">
+          <option value="5000">5초</option>
+          <option value="8000" selected>8초</option>
+          <option value="10000">10초</option>
+          <option value="15000">15초</option>
+        </select>
       </div>
-      <div class="flex items-center space-x-4">
-        <button id="slide-play-pause" class="text-slate-400 hover:text-white text-lg">
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <button id="slide-bgm-toggle" class="px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition" title="잔잔한 배경음악">
+          <i class="fa-solid fa-music mr-1"></i><span class="hidden sm:inline">BGM</span>
+        </button>
+        <button id="slide-tts-toggle" class="px-2.5 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition" title="확언 음성 읽기">
+          <i class="fa-solid fa-volume-high mr-1"></i><span class="hidden sm:inline">음성읽기</span>
+        </button>
+        <button id="slide-save-wallpaper" class="px-2.5 py-1.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 border border-indigo-500/40 text-xs font-semibold transition" title="9:16 폰 배경화면 저장">
+          <i class="fa-solid fa-mobile-screen mr-1"></i><span class="hidden sm:inline">배경화면 저장</span>
+        </button>
+        <button id="slide-play-pause" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white text-base">
           <i class="fa-solid fa-pause"></i>
         </button>
-        <button id="slide-close" class="text-slate-400 hover:text-white text-2xl">
+        <button id="slide-close" class="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white text-xl">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
     </div>
 
     <!-- Center Vivid Media & Typography -->
-    <div class="flex-1 flex flex-col items-center justify-center text-center max-w-4xl mx-auto my-6 z-10 px-4">
-      <div id="slide-media-container" class="w-full max-h-[50vh] rounded-3xl overflow-hidden shadow-2xl mb-6 flex items-center justify-center bg-black/40">
+    <div class="flex-1 flex flex-col items-center justify-center text-center max-w-4xl mx-auto my-4 z-10 px-2 sm:px-4">
+      <div id="slide-media-container" class="w-full max-h-[44vh] rounded-3xl overflow-hidden shadow-2xl mb-5 flex items-center justify-center bg-black/40">
         <!-- Slide image/video -->
       </div>
-      <h2 id="slide-title" class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-3 drop-shadow-md">
+      <h2 id="slide-title" class="text-xl sm:text-4xl font-extrabold text-white tracking-tight mb-2.5 drop-shadow-md">
         꿈 제목
       </h2>
-      <p id="slide-vivid-desc" class="text-sm sm:text-lg text-slate-300 leading-relaxed font-light mb-4 drop-shadow">
+      <p id="slide-vivid-desc" class="text-xs sm:text-lg text-slate-300 leading-relaxed font-light mb-3 drop-shadow max-w-2xl">
         생생한 묘사 내용
       </p>
-      <div id="slide-affirmation-box" class="px-5 py-2.5 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-purple-200 text-xs sm:text-sm font-semibold tracking-wide shadow-lg">
+      <div id="slide-affirmation-box" class="px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-purple-950/60 border border-purple-500/30 text-purple-200 text-xs sm:text-sm font-semibold tracking-wide shadow-lg mb-2">
         "확언 문구"
+      </div>
+      <div id="slide-diary-box" class="hidden px-4 py-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 text-[11px] sm:text-xs max-w-xl">
+        <!-- Linked Future Diary excerpt -->
       </div>
     </div>
 
-    <!-- Bottom navigation buttons -->
-    <div class="flex items-center justify-center space-x-6 z-10">
-      <button id="slide-prev" class="w-12 h-12 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center text-lg border border-slate-700 transition">
+    <!-- Bottom navigation & Daily Streak Check-in -->
+    <div class="flex items-center justify-center space-x-4 sm:space-x-6 z-10">
+      <button id="slide-prev" class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center text-base border border-slate-700 transition">
         <i class="fa-solid fa-chevron-left"></i>
       </button>
-      <button id="slide-next" class="w-12 h-12 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center text-lg border border-slate-700 transition">
+      <button id="btn-checkin-streak" class="px-4 py-2.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white text-xs sm:text-sm font-bold shadow-lg shadow-orange-500/30 transition flex items-center space-x-1.5">
+        <span>🔥</span>
+        <span>오늘의 시각화 완료</span>
+      </button>
+      <button id="slide-next" class="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white flex items-center justify-center text-base border border-slate-700 transition">
         <i class="fa-solid fa-chevron-right"></i>
       </button>
     </div>
@@ -534,6 +845,6 @@
     };
   </script>
   <!-- Firebase SDKs (Modular v10) -->
-  <script type="module" src="app.js?v=20261125_02"></script>
+  <script type="module" src="app.js?v=20261126_01"></script>
 </body>
 </html>

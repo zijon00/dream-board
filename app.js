@@ -16,6 +16,7 @@ import {
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   getDocs, 
   deleteDoc, 
   onSnapshot 
@@ -121,11 +122,24 @@ function calculateDDay(deadlineStr) {
   
   if (diffDays === 0) return { text: "D-Day", isUrgent: true, isPassed: false };
   if (diffDays > 0) return { text: `D-${diffDays}`, isUrgent: diffDays <= 30, isPassed: false };
-  return { text: `D+${Math.abs(diffDays)} (지남)`, isUrgent: false, isPassed: true };
+  return { text: "숨 고르기 중 · 날짜 다시 잡기", isUrgent: false, isPassed: true };
 }
 // State
 let dreams = [];
+let dream100List = [];
+let userProfileData = {
+  myWhy: [
+    "사랑하는 가족과 시간·경제적 자유를 누리기 위해",
+    "부모님께 건강한 노후와 여행을 선물하기 위해",
+    "누군가의 꿈을 돕는 선한 영향력의 리더가 되기 위해"
+  ],
+  enablePinPlanner: false,
+  monthlySavingCapacity: 1000000,
+  visualizationStreak: { count: 0, lastCheckedDate: "" }
+};
 let activeCategory = "ALL";
+let plannerYearFilter = "ALL";
+let simDeltaIncome = 0;
 let filterOnlyCompleted = false;
 let currentView = "grid";
 let currentManagingDreamId = null;
@@ -212,6 +226,58 @@ const settingsModalClose = document.getElementById("settings-modal-close");
 const btnExportJson = document.getElementById("btn-export-json");
 const inputImportJson = document.getElementById("input-import-json");
 
+// My Why & Streak Elements
+const btnToggleWhy = document.getElementById("btn-toggle-why");
+const whyChevron = document.getElementById("why-chevron");
+const myWhyList = document.getElementById("my-why-list");
+const btnEditWhy = document.getElementById("btn-edit-why");
+const modalWhy = document.getElementById("modal-why");
+const whyModalClose = document.getElementById("why-modal-close");
+const whyModalCancel = document.getElementById("why-modal-cancel");
+const whyForm = document.getElementById("why-form");
+const streakCountText = document.getElementById("streak-count-text");
+const streakCountMobile = document.getElementById("streak-count-mobile");
+
+// Dream Discovery (Dream 100 & AI Refine & Inspiration)
+const btnDream100 = document.getElementById("btn-dream-100");
+const modalDream100 = document.getElementById("modal-dream-100");
+const dream100ModalClose = document.getElementById("dream100-modal-close");
+const dream100Form = document.getElementById("dream100-form");
+const dream100Cat = document.getElementById("dream100-cat");
+const dream100Input = document.getElementById("dream100-input");
+const dream100ListEl = document.getElementById("dream100-list");
+const dream100Counter = document.getElementById("dream100-counter");
+const inspirationChips = document.getElementById("inspiration-chips");
+const btnAiRefine = document.getElementById("btn-ai-refine");
+
+// Future Diary & Navigation Elements
+const headerSubbar = document.getElementById("header-subbar");
+const sectionDreamBoard = document.getElementById("section-dream-board");
+const sectionFutureDiary = document.getElementById("section-future-diary");
+const futureDiaryList = document.getElementById("future-diary-list");
+const btnNavDiaryTop = document.getElementById("btn-nav-diary-top");
+const btnBackToBoard = document.getElementById("btn-back-to-board");
+const btnNewDiary = document.getElementById("btn-new-diary");
+const modalFutureDiary = document.getElementById("modal-future-diary");
+const diaryModalClose = document.getElementById("diary-modal-close");
+const diaryModalCancel = document.getElementById("diary-modal-cancel");
+const diaryForm = document.getElementById("diary-form");
+const mobileNavBtns = document.querySelectorAll(".mobile-nav-btn");
+
+// Simulator & Slideshow v1.2 Elements
+const plannerProgressText = document.getElementById("planner-progress-text");
+const plannerProgressBar = document.getElementById("planner-progress-bar");
+const plannerYearTabs = document.querySelectorAll(".planner-year-tab");
+const simMonthlySavingInput = document.getElementById("sim-monthly-saving");
+const simPresetBtns = document.querySelectorAll(".sim-preset-btn");
+const simResultBox = document.getElementById("sim-result-box");
+const slideIntervalSelect = document.getElementById("slide-interval-select");
+const slideBgmToggle = document.getElementById("slide-bgm-toggle");
+const slideTtsToggle = document.getElementById("slide-tts-toggle");
+const slideSaveWallpaper = document.getElementById("slide-save-wallpaper");
+const slideDiaryBox = document.getElementById("slide-diary-box");
+const btnCheckinStreak = document.getElementById("btn-checkin-streak");
+
 // Init function (invoked at bottom after all bindings)
 function initApp() {
   setupAuth();
@@ -261,12 +327,15 @@ function setupAuth() {
       userName.textContent = user.displayName || user.email.split("@")[0];
       showToast(`${user.displayName || '회원'}님 환영합니다! 동기화 중 ✨`);
 
+      // Load user profile (myWhy, streak, settings)
+      await loadUserProfile(user.uid);
       // Sync local dreams to Firestore if local dreams exist
       await syncLocalDreamsToFirestore(user.uid);
       // Listen to real-time updates from Firestore
       subscribeToFirestore(user.uid);
     } else {
       // User is signed out
+      loadLocalUserProfile();
       btnLogin.classList.remove("hidden");
       userProfile.classList.add("hidden");
       userProfile.classList.remove("flex");
@@ -450,6 +519,87 @@ function setupEventListeners() {
       }
     });
   }
+
+  // My Why 3 Reasons Banner & Modal
+  if (btnToggleWhy && myWhyList) {
+    btnToggleWhy.addEventListener("click", () => {
+      myWhyList.classList.toggle("hidden");
+      if (whyChevron) whyChevron.classList.toggle("rotate-180");
+    });
+  }
+  if (btnEditWhy) btnEditWhy.addEventListener("click", openWhyModal);
+  if (whyModalClose) whyModalClose.addEventListener("click", () => modalWhy.classList.add("hidden"));
+  if (whyModalCancel) whyModalCancel.addEventListener("click", () => modalWhy.classList.add("hidden"));
+  if (whyForm) whyForm.addEventListener("submit", handleWhyFormSubmit);
+
+  // Dream 100 Discovery & AI Refine
+  if (btnDream100) btnDream100.addEventListener("click", openDream100Modal);
+  if (dream100ModalClose) dream100ModalClose.addEventListener("click", () => modalDream100.classList.add("hidden"));
+  if (dream100Form) dream100Form.addEventListener("submit", handleDream100Add);
+  if (btnAiRefine) btnAiRefine.addEventListener("click", handleAiRefine);
+  document.querySelectorAll('input[name="form-cat"]').forEach(radio => {
+    radio.addEventListener("change", () => renderInspirationChips(radio.value));
+  });
+
+  // Future Diary & Navigation
+  if (btnNavDiaryTop) btnNavDiaryTop.addEventListener("click", () => switchMainView("diary"));
+  if (btnBackToBoard) btnBackToBoard.addEventListener("click", () => switchMainView("board"));
+  if (btnNewDiary) btnNewDiary.addEventListener("click", () => openDiaryModal());
+  if (diaryModalClose) diaryModalClose.addEventListener("click", () => modalFutureDiary.classList.add("hidden"));
+  if (diaryModalCancel) diaryModalCancel.addEventListener("click", () => modalFutureDiary.classList.add("hidden"));
+  if (diaryForm) diaryForm.addEventListener("submit", handleDiaryFormSubmit);
+
+  mobileNavBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.nav;
+      if (target === "board") switchMainView("board");
+      else if (target === "diary") switchMainView("diary");
+      else if (target === "dream100") openDream100Modal();
+      else if (target === "budget") openBudgetPlannerModal();
+      else if (target === "meditate") startSlideshow();
+    });
+  });
+
+  // Budget Planner Year Tabs & Simulator
+  plannerYearTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      plannerYearTabs.forEach(t => {
+        t.classList.remove("bg-amber-600", "text-white");
+        t.classList.add("text-slate-400");
+      });
+      tab.classList.add("bg-amber-600", "text-white");
+      tab.classList.remove("text-slate-400");
+      plannerYearFilter = tab.dataset.year;
+      renderBudgetPlannerList();
+    });
+  });
+  if (simMonthlySavingInput) {
+    simMonthlySavingInput.addEventListener("input", () => {
+      userProfileData.monthlySavingCapacity = Math.max(0, parseInt(simMonthlySavingInput.value, 10) || 0);
+      updatePlannerTotalPreview();
+    });
+  }
+  simPresetBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      simPresetBtns.forEach(b => b.classList.remove("bg-indigo-600", "text-white"));
+      btn.classList.add("bg-indigo-600", "text-white");
+      simDeltaIncome = parseInt(btn.dataset.delta, 10) || 0;
+      updatePlannerTotalPreview();
+    });
+  });
+
+  // Slideshow v1.2 Controls
+  if (slideIntervalSelect) {
+    slideIntervalSelect.addEventListener("change", () => {
+      if (isSlidePlaying && !modalSlideshow.classList.contains("hidden")) {
+        restartSlideTimer();
+      }
+    });
+  }
+  if (slideBgmToggle) slideBgmToggle.addEventListener("click", toggleSlideBgm);
+  if (slideTtsToggle) slideTtsToggle.addEventListener("click", toggleSlideTts);
+  if (slideSaveWallpaper) slideSaveWallpaper.addEventListener("click", savePhoneWallpaper);
+  if (btnCheckinStreak) btnCheckinStreak.addEventListener("click", checkinVisualizationStreak);
 }
 
 // --- Fetch & Render ---
@@ -507,9 +657,15 @@ function updateCounts() {
   document.getElementById("count-do").textContent = dreams.filter(d => d.category === "DO").length;
   document.getElementById("count-have").textContent = dreams.filter(d => d.category === "HAVE").length;
   document.getElementById("count-give").textContent = dreams.filter(d => d.category === "GIVE").length;
+  const goEl = document.getElementById("count-go");
+  const beEl = document.getElementById("count-be");
+  if (goEl) goEl.textContent = dreams.filter(d => d.category === "GO").length;
+  if (beEl) beEl.textContent = dreams.filter(d => d.category === "BE").length;
 
-  // Calculate total budget of all active dreams
-  const totalBudget = dreams.reduce((sum, d) => sum + (d.estimated_budget || 0), 0);
+  // Exclude completed dreams from remaining budget sum
+  const totalBudget = dreams
+    .filter(d => !d.is_completed)
+    .reduce((sum, d) => sum + Math.max(0, (d.estimated_budget || 0) - (d.savedAmount || 0)), 0);
   const totalBudgetElem = document.getElementById("total-budget-sum");
   if (totalBudgetElem) {
     totalBudgetElem.textContent = formatKoreanCurrency(totalBudget);
@@ -546,8 +702,12 @@ function renderDreamCard(dream) {
     DO: { label: "하고 싶은 것", color: "from-blue-500 to-indigo-600", text: "text-blue-400" },
     HAVE: { label: "갖고 싶은 것", color: "from-purple-500 to-pink-600", text: "text-purple-400" },
     GIVE: { label: "해주고 싶은 것", color: "from-amber-500 to-orange-600", text: "text-amber-400" },
+    GO: { label: "가고 싶은 곳", color: "from-emerald-500 to-teal-600", text: "text-emerald-400" },
+    BE: { label: "되고 싶은 사람", color: "from-rose-500 to-fuchsia-600", text: "text-rose-400" },
   };
   const cat = catMap[dream.category] || catMap.DO;
+  const yearLabels = { "1Y": "1년 후", "2Y": "2년 후", "3Y": "3년 후" };
+  const yearTag = yearLabels[dream.targetYearBucket] || "1년 후";
 
   // Media rendering
   let mediaHtml = "";
@@ -576,33 +736,53 @@ function renderDreamCard(dream) {
        </span>`
     : "";
 
-  // D-Day badge calculation
+  // D-Day badge calculation (gentle reset UX when passed)
   const ddayInfo = calculateDDay(dream.deadline);
   let ddayBadge = "";
   if (ddayInfo) {
-    const badgeColor = ddayInfo.isPassed
-      ? "bg-rose-950/80 text-rose-300 border-rose-700/60"
-      : (ddayInfo.isUrgent
-          ? "bg-amber-950/80 text-amber-300 border-amber-600/60 animate-pulse"
-          : "bg-indigo-950/80 text-indigo-300 border-indigo-700/60");
-    ddayBadge = `
-      <span class="px-2 py-0.5 rounded-md text-[11px] font-black border ${badgeColor} flex items-center space-x-1 shadow-sm">
-        <i class="fa-regular fa-hourglass-half text-[10px]"></i>
-        <span>${ddayInfo.text}</span>
-      </span>
-    `;
+    if (ddayInfo.isPassed && !dream.is_completed) {
+      ddayBadge = `
+        <button type="button" onclick="event.stopPropagation(); window.openDreamModal('${dream.id}', true)" class="px-2 py-0.5 rounded-md text-[11px] font-semibold border bg-slate-900/90 hover:bg-slate-800 text-amber-200 border-amber-500/40 flex items-center space-x-1 shadow-sm transition">
+          <i class="fa-solid fa-rotate-right text-[10px] text-amber-400"></i>
+          <span>${ddayInfo.text}</span>
+        </button>
+      `;
+    } else if (!ddayInfo.isPassed) {
+      const badgeColor = ddayInfo.isUrgent
+        ? "bg-amber-950/80 text-amber-300 border-amber-600/60 animate-pulse"
+        : "bg-indigo-950/80 text-indigo-300 border-indigo-700/60";
+      ddayBadge = `
+        <span class="px-2 py-0.5 rounded-md text-[11px] font-black border ${badgeColor} flex items-center space-x-1 shadow-sm">
+          <i class="fa-regular fa-hourglass-half text-[10px]"></i>
+          <span>${ddayInfo.text}</span>
+        </span>
+      `;
+    }
   }
 
-  // Budget display
+  // Budget & Progress display
   let budgetHtml = "";
   if (dream.estimated_budget && dream.estimated_budget > 0) {
+    const saved = dream.savedAmount || 0;
+    const pct = Math.min(100, Math.round((saved / dream.estimated_budget) * 100));
     budgetHtml = `
-      <div class="flex items-center justify-between text-xs py-1.5 px-3 rounded-xl bg-slate-900/80 border border-slate-800">
-        <span class="text-slate-400 flex items-center space-x-1">
-          <i class="fa-solid fa-won-sign text-amber-400"></i>
-          <span>필요 예산</span>
-        </span>
-        <span class="font-bold text-amber-300">${formatKoreanCurrency(dream.estimated_budget)}</span>
+      <div class="space-y-1.5 py-2 px-3 rounded-xl bg-slate-900/80 border border-slate-800">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400 flex items-center space-x-1">
+            <i class="fa-solid fa-won-sign text-amber-400"></i>
+            <span>목표 예산</span>
+          </span>
+          <span class="font-bold text-amber-300">${formatKoreanCurrency(dream.estimated_budget)}</span>
+        </div>
+        ${saved > 0 ? `
+          <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-400" style="width: ${pct}%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-emerald-300 font-semibold">
+            <span>준비됨: ${formatKoreanCurrency(saved)}</span>
+            <span>${pct}% 달성</span>
+          </div>
+        ` : ''}
       </div>
     `;
   }
@@ -615,11 +795,12 @@ function renderDreamCard(dream) {
           ${mediaHtml}
           <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
           
-          <!-- Category badge & D-Day -->
-          <div class="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+          <!-- Category badge, Year tag & D-Day -->
+          <div class="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 pr-10">
             <span class="px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider text-white bg-gradient-to-r ${cat.color} shadow-md">
               ${cat.label}
             </span>
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900/85 text-slate-200 border border-slate-700">${yearTag}</span>
             ${ddayBadge}
             ${completedBadge}
           </div>
@@ -640,6 +821,13 @@ function renderDreamCard(dream) {
               <i class="${dream.is_completed ? 'fa-solid fa-star text-amber-400' : 'fa-regular fa-star'}"></i>
             </button>
           </div>
+
+          ${dream.whyNote ? `
+            <p class="text-[11px] text-indigo-300 font-medium flex items-start space-x-1.5">
+              <i class="fa-solid fa-heart text-rose-400 mt-0.5 shrink-0"></i>
+              <span>${dream.whyNote}</span>
+            </p>
+          ` : ''}
 
           ${dream.vivid_description ? `
             <p class="text-xs sm:text-sm text-slate-300 line-clamp-3 leading-relaxed font-light">
@@ -683,24 +871,33 @@ function renderDreamCard(dream) {
 
 // --- Dream Add / Edit ---
 
-function openDreamModal(dreamId = null) {
+function openDreamModal(dreamId = null, focusDeadline = false) {
   if (dreamId) {
     const d = dreams.find(item => item.id === dreamId);
     if (!d) return;
     formDreamId.value = d.id;
     modalTitle.innerHTML = `<span class="text-purple-400"><i class="fa-solid fa-pen"></i></span> <span>꿈 수정하기</span>`;
-    document.querySelector(`input[name="form-cat"][value="${d.category}"]`).checked = true;
+    const catRadio = document.querySelector(`input[name="form-cat"][value="${d.category}"]`);
+    if (catRadio) catRadio.checked = true;
     document.getElementById("form-title").value = d.title;
+    document.getElementById("form-why-note").value = d.whyNote || "";
     document.getElementById("form-vivid-desc").value = d.vivid_description || "";
+    document.getElementById("form-year-bucket").value = d.targetYearBucket || "1Y";
     document.getElementById("form-deadline").value = d.deadline || "";
     document.getElementById("form-affirmation").value = d.affirmation || "";
+    renderInspirationChips(d.category);
   } else {
     formDreamId.value = "";
     modalTitle.innerHTML = `<span class="text-purple-400"><i class="fa-solid fa-wand-magic-sparkles"></i></span> <span>꿈 등록하기</span>`;
     dreamForm.reset();
+    document.getElementById("form-year-bucket").value = "1Y";
     document.getElementById("form-deadline").value = "";
+    renderInspirationChips("DO");
   }
   modalDream.classList.remove("hidden");
+  if (focusDeadline) {
+    setTimeout(() => document.getElementById("form-deadline")?.focus(), 150);
+  }
 }
 
 function closeDreamModal() {
@@ -713,7 +910,9 @@ async function handleDreamFormSubmit(e) {
   const dreamId = formDreamId.value;
   const category = document.querySelector('input[name="form-cat"]:checked').value;
   const title = document.getElementById("form-title").value.trim();
+  const whyNote = document.getElementById("form-why-note").value.trim();
   const vivid_description = document.getElementById("form-vivid-desc").value.trim();
+  const targetYearBucket = document.getElementById("form-year-bucket").value || "1Y";
   const deadline = document.getElementById("form-deadline").value.trim();
   const affirmation = document.getElementById("form-affirmation").value.trim();
 
@@ -721,10 +920,13 @@ async function handleDreamFormSubmit(e) {
   const payload = {
     category,
     title,
+    whyNote,
     vivid_description,
+    targetYearBucket,
     target_date: deadline,
     deadline,
     estimated_budget: existingDream ? (existingDream.estimated_budget || 0) : 0,
+    savedAmount: existingDream ? (existingDream.savedAmount || 0) : 0,
     budget_notes: existingDream ? (existingDream.budget_notes || "") : "",
     affirmation
   };
@@ -1272,7 +1474,20 @@ async function handleAiSynthesize() {
   }
 }
 
-// --- Visualization Slideshow (Meditation Mode) ---
+// --- Visualization Slideshow (Meditation Mode v1.2) ---
+
+let bgmAudioCtx = null;
+let bgmGainNode = null;
+let isBgmPlaying = false;
+let isTtsEnabled = false;
+
+function restartSlideTimer() {
+  if (slideInterval) clearInterval(slideInterval);
+  const ms = parseInt(slideIntervalSelect?.value || "8000", 10) || 8000;
+  slideInterval = setInterval(() => {
+    if (isSlidePlaying) changeSlide(1);
+  }, ms);
+}
 
 function startSlideshow() {
   if (dreams.length === 0) {
@@ -1283,16 +1498,14 @@ function startSlideshow() {
   isSlidePlaying = true;
   modalSlideshow.classList.remove("hidden");
   renderSlide();
-
-  if (slideInterval) clearInterval(slideInterval);
-  slideInterval = setInterval(() => {
-    if (isSlidePlaying) changeSlide(1);
-  }, 6000);
+  restartSlideTimer();
 }
 
 function stopSlideshow() {
   modalSlideshow.classList.add("hidden");
   if (slideInterval) clearInterval(slideInterval);
+  if (isBgmPlaying) toggleSlideBgm();
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
 }
 
 function toggleSlidePlay() {
@@ -1307,6 +1520,135 @@ function changeSlide(direction) {
   renderSlide();
 }
 
+function toggleSlideBgm() {
+  if (!isBgmPlaying) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      bgmAudioCtx = new AudioCtx();
+      bgmGainNode = bgmAudioCtx.createGain();
+      bgmGainNode.gain.setValueAtTime(0.04, bgmAudioCtx.currentTime);
+      bgmGainNode.connect(bgmAudioCtx.destination);
+      // Warm calm ambient chord (432Hz harmonic pad)
+      [216, 272.1, 324].forEach(freq => {
+        const osc = bgmAudioCtx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, bgmAudioCtx.currentTime);
+        osc.connect(bgmGainNode);
+        osc.start();
+      });
+      isBgmPlaying = true;
+      slideBgmToggle?.classList.add("bg-purple-700", "text-white");
+      showToast("잔잔한 명상 BGM이 재생됩니다 🎵");
+    } catch {}
+  } else {
+    try { bgmAudioCtx?.close(); } catch {}
+    bgmAudioCtx = null;
+    isBgmPlaying = false;
+    slideBgmToggle?.classList.remove("bg-purple-700", "text-white");
+  }
+}
+
+function toggleSlideTts() {
+  isTtsEnabled = !isTtsEnabled;
+  if (isTtsEnabled) {
+    slideTtsToggle?.classList.add("bg-purple-700", "text-white");
+    speakCurrentSlide();
+  } else {
+    slideTtsToggle?.classList.remove("bg-purple-700", "text-white");
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+}
+
+function speakCurrentSlide() {
+  if (!isTtsEnabled || !window.speechSynthesis) return;
+  const d = dreams[slideIndex];
+  if (!d) return;
+  window.speechSynthesis.cancel();
+  const text = `${d.title}. ${d.vivid_description || ""} ${d.affirmation || ""}`;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "ko-KR";
+  utter.rate = 0.92;
+  window.speechSynthesis.speak(utter);
+}
+
+async function savePhoneWallpaper() {
+  showToast("9:16 스마트폰 비전보드 배경화면을 생성하는 중...");
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext("2d");
+
+  // Gradient Background
+  const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+  grad.addColorStop(0, "#0f172a");
+  grad.addColorStop(0.5, "#1e1b4b");
+  grad.addColorStop(1, "#090d16");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1920);
+
+  // Header Title
+  ctx.fillStyle = "#e9d5ff";
+  ctx.font = "bold 44px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("✨ MY DREAM BOARD ✨", 540, 180);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "28px sans-serif";
+  ctx.fillText(userProfileData.myWhy?.[0] || "상상할 수 있다면 이미 현실이 되기 시작한 것이다", 540, 235);
+
+  const imgDreams = dreams.filter(d => d.primary_media && d.primary_media.media_type !== "video").slice(0, 6);
+  const cols = 2;
+  const pad = 50;
+  const gap = 30;
+  const cardW = (1080 - pad * 2 - gap) / cols;
+  const cardH = 380;
+
+  for (let i = 0; i < imgDreams.length; i++) {
+    const d = imgDreams[i];
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = pad + col * (cardW + gap);
+    const y = 310 + row * (cardH + gap);
+
+    ctx.fillStyle = "rgba(30, 41, 59, 0.85)";
+    ctx.fillRect(x, y, cardW, cardH);
+
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+        img.src = d.primary_media.url;
+      });
+      if (img.width > 0) {
+        ctx.drawImage(img, x, y, cardW, cardH - 70);
+      }
+    } catch {}
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(d.title.slice(0, 18), x + cardW / 2, y + cardH - 25);
+  }
+
+  ctx.fillStyle = "#c4b5fd";
+  ctx.font = "26px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("dream-board-eta.vercel.app", 540, 1830);
+
+  try {
+    const link = document.createElement("a");
+    link.download = `dream-board-wallpaper-${new Date().toISOString().split("T")[0]}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("스마트폰 배경화면(9:16)이 저장되었습니다! 📱");
+  } catch {
+    showToast("외부 이미지 보안 정책으로 일부 사진이 제외될 수 있습니다.");
+  }
+}
+
 function renderSlide() {
   const d = dreams[slideIndex];
   if (!d) return;
@@ -1319,7 +1661,7 @@ function renderSlide() {
   
   let descHtml = d.vivid_description || "꿈을 생생하게 바라보며 이미 이루어진 감정을 온전히 느껴보세요.";
   if (d.estimated_budget && d.estimated_budget > 0) {
-    descHtml += `<br><span class="inline-block mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30"><i class="fa-solid fa-won-sign mr-1"></i>필요 예산: ${formatKoreanCurrency(d.estimated_budget)}${d.budget_notes ? ` (${d.budget_notes})` : ''}</span>`;
+    descHtml += `<br><span class="inline-block mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30"><i class="fa-solid fa-won-sign mr-1"></i>목표 예산: ${formatKoreanCurrency(d.estimated_budget)}${d.budget_notes ? ` (${d.budget_notes})` : ''}</span>`;
   }
   slideVividDesc.innerHTML = descHtml;
   
@@ -1330,23 +1672,34 @@ function renderSlide() {
     slideAffirmationBox.classList.add("hidden");
   }
 
+  if (slideDiaryBox) {
+    if (d.futureDiary && d.futureDiary.content) {
+      slideDiaryBox.innerHTML = `<span class="font-bold text-emerald-300">📖 미래일기 (${d.futureDiary.date || ''}):</span> ${d.futureDiary.content}`;
+      slideDiaryBox.classList.remove("hidden");
+    } else {
+      slideDiaryBox.classList.add("hidden");
+    }
+  }
+
   if (d.primary_media) {
     if (d.primary_media.media_type === "video") {
       slideMediaContainer.innerHTML = `
-        <video src="${d.primary_media.url}" autoplay loop muted playsinline class="max-h-[50vh] w-auto max-w-full rounded-2xl shadow-2xl"></video>
+        <video src="${d.primary_media.url}" autoplay loop muted playsinline class="max-h-[44vh] w-auto max-w-full rounded-2xl shadow-2xl"></video>
       `;
     } else {
       slideMediaContainer.innerHTML = `
-        <img src="${d.primary_media.url}" alt="${d.title}" class="max-h-[50vh] w-auto max-w-full rounded-2xl shadow-2xl object-contain" />
+        <img src="${d.primary_media.url}" alt="${d.title}" class="max-h-[44vh] w-auto max-w-full rounded-2xl shadow-2xl object-contain" />
       `;
     }
   } else {
     slideMediaContainer.innerHTML = `
-      <div class="h-64 w-96 bg-slate-900 rounded-2xl flex items-center justify-center text-slate-600">
+      <div class="h-56 w-80 bg-slate-900 rounded-2xl flex items-center justify-center text-slate-600">
         <i class="fa-solid fa-sparkles text-4xl"></i>
       </div>
     `;
   }
+
+  speakCurrentSlide();
 }
 
 // --- Toast ---
@@ -1361,7 +1714,7 @@ function showToast(msg) {
   }, 3500);
 }
 
-// --- Budget Planner & Price Search ---
+// --- Budget Planner, Progress & Income Simulator ---
 
 let plannerDraftBudgets = {};
 
@@ -1370,9 +1723,13 @@ function openBudgetPlannerModal() {
   dreams.forEach(d => {
     plannerDraftBudgets[d.id] = {
       estimated_budget: d.estimated_budget || 0,
+      savedAmount: d.savedAmount || 0,
       budget_notes: d.budget_notes || ""
     };
   });
+  if (simMonthlySavingInput) {
+    simMonthlySavingInput.value = userProfileData.monthlySavingCapacity || 1000000;
+  }
   renderBudgetPlannerList();
   modalBudgetPlanner.classList.remove("hidden");
 }
@@ -1382,26 +1739,80 @@ function closeBudgetPlannerModal() {
 }
 
 function updatePlannerTotalPreview() {
-  const total = Object.values(plannerDraftBudgets).reduce(
-    (sum, item) => sum + (parseInt(item.estimated_budget, 10) || 0),
-    0
-  );
+  const activeDreams = dreams.filter(d => {
+    if (d.is_completed) return false;
+    if (plannerYearFilter !== "ALL" && (d.targetYearBucket || "1Y") !== plannerYearFilter) return false;
+    return true;
+  });
+
+  let totalTarget = 0;
+  let totalSaved = 0;
+  for (const d of activeDreams) {
+    const draft = plannerDraftBudgets[d.id];
+    const target = draft ? (parseInt(draft.estimated_budget, 10) || 0) : (d.estimated_budget || 0);
+    const saved = draft ? (parseInt(draft.savedAmount, 10) || 0) : (d.savedAmount || 0);
+    totalTarget += target;
+    totalSaved += Math.min(target > 0 ? target : saved, saved);
+  }
+
+  const remainingTotal = Math.max(0, totalTarget - totalSaved);
+  const pct = totalTarget > 0 ? Math.min(100, Math.round((totalSaved / totalTarget) * 100)) : 0;
+
   if (plannerTotalBudget) {
-    plannerTotalBudget.textContent = formatKoreanCurrency(total);
+    plannerTotalBudget.textContent = formatKoreanCurrency(remainingTotal);
+  }
+  if (plannerProgressText) {
+    plannerProgressText.textContent = `달성률 ${pct}% (준비됨 ${formatKoreanCurrency(totalSaved)})`;
+  }
+  if (plannerProgressBar) {
+    plannerProgressBar.style.width = `${pct}%`;
+  }
+
+  if (simResultBox) {
+    const baseMonthly = Math.max(0, parseInt(simMonthlySavingInput?.value || userProfileData.monthlySavingCapacity || 0, 10) || 0);
+    if (remainingTotal <= 0) {
+      simResultBox.innerHTML = `<span class="text-emerald-300 font-bold">🎉 선택된 목표 예산을 이미 100% 준비하셨습니다!</span>`;
+    } else if (baseMonthly + simDeltaIncome <= 0) {
+      simResultBox.innerHTML = `<span class="text-slate-400">월 저축 여력을 입력하시면 예상 달성 기간을 계산해 드립니다.</span>`;
+    } else {
+      const baseMonths = baseMonthly > 0 ? Math.ceil(remainingTotal / baseMonthly) : null;
+      const boostedMonths = Math.ceil(remainingTotal / (baseMonthly + simDeltaIncome));
+      const savedMonths = baseMonths !== null ? Math.max(0, baseMonths - boostedMonths) : 0;
+      const targetDate = new Date();
+      targetDate.setMonth(targetDate.getMonth() + boostedMonths);
+      const ym = `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월`;
+
+      simResultBox.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <span>월 저축+추가수입 <strong class="text-indigo-300">${formatKoreanCurrency(baseMonthly + simDeltaIncome)}</strong> 기준:</span>
+          <span class="font-bold text-amber-300 text-sm">약 ${boostedMonths}개월 (${ym} 달성 예상)</span>
+        </div>
+        ${simDeltaIncome > 0 && savedMonths > 0 ? `<div class="mt-1 text-emerald-300 font-semibold">✨ 추가 수입 ${formatKoreanCurrency(simDeltaIncome)}으로 꿈이 <strong>${savedMonths}개월</strong> 더 앞당겨집니다!</div>` : ''}
+      `;
+    }
   }
 }
 
 function onPlannerBudgetInput(dreamId, value) {
   const num = value ? Math.max(0, parseInt(value, 10) || 0) : 0;
-  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, budget_notes: "" };
+  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, savedAmount: 0, budget_notes: "" };
   plannerDraftBudgets[dreamId].estimated_budget = num;
   const label = document.getElementById(`planner-korean-${dreamId}`);
   if (label) label.textContent = formatKoreanCurrency(num);
   updatePlannerTotalPreview();
 }
 
+function onPlannerSavedInput(dreamId, value) {
+  const num = value ? Math.max(0, parseInt(value, 10) || 0) : 0;
+  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, savedAmount: 0, budget_notes: "" };
+  plannerDraftBudgets[dreamId].savedAmount = num;
+  const label = document.getElementById(`planner-saved-korean-${dreamId}`);
+  if (label) label.textContent = formatKoreanCurrency(num);
+  updatePlannerTotalPreview();
+}
+
 function onPlannerNotesInput(dreamId, value) {
-  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, budget_notes: "" };
+  if (!plannerDraftBudgets[dreamId]) plannerDraftBudgets[dreamId] = { estimated_budget: 0, savedAmount: 0, budget_notes: "" };
   plannerDraftBudgets[dreamId].budget_notes = value;
 }
 
@@ -1417,6 +1828,8 @@ function searchPriceForDream(dreamTitle, engine) {
 function renderBudgetPlannerList() {
   const onlyUnset = plannerOnlyUnset && plannerOnlyUnset.checked;
   const list = dreams.filter(d => {
+    if (d.is_completed) return false;
+    if (plannerYearFilter !== "ALL" && (d.targetYearBucket || "1Y") !== plannerYearFilter) return false;
     if (!onlyUnset) return true;
     const draft = plannerDraftBudgets[d.id];
     const amt = draft ? draft.estimated_budget : (d.estimated_budget || 0);
@@ -1437,7 +1850,7 @@ function renderBudgetPlannerList() {
   if (list.length === 0) {
     budgetListContainer.innerHTML = `
       <div class="text-center py-10 text-amber-300/80 text-xs sm:text-sm">
-        모든 꿈에 예산이 입력되어 있습니다! ✨
+        해당 조건의 미완료 꿈 항목이 없습니다! ✨
       </div>
     `;
     return;
@@ -1446,14 +1859,17 @@ function renderBudgetPlannerList() {
   const catLabels = {
     DO: { label: "🏃 하고 싶은 것", cls: "bg-indigo-950 text-indigo-300 border-indigo-800" },
     HAVE: { label: "💎 갖고 싶은 것", cls: "bg-purple-950 text-purple-300 border-purple-800" },
-    GIVE: { label: "💝 해주고 싶은 것", cls: "bg-rose-950 text-rose-300 border-rose-800" }
+    GIVE: { label: "💝 해주고 싶은 것", cls: "bg-rose-950 text-rose-300 border-rose-800" },
+    GO: { label: "✈️ 가고 싶은 곳", cls: "bg-emerald-950 text-emerald-300 border-emerald-800" },
+    BE: { label: "🌟 되고 싶은 사람", cls: "bg-pink-950 text-pink-300 border-pink-800" }
   };
 
   budgetListContainer.innerHTML = list.map(d => {
     const cat = catLabels[d.category] || catLabels.DO;
-    const draft = plannerDraftBudgets[d.id] || { estimated_budget: d.estimated_budget || 0, budget_notes: d.budget_notes || "" };
+    const draft = plannerDraftBudgets[d.id] || { estimated_budget: d.estimated_budget || 0, savedAmount: d.savedAmount || 0, budget_notes: d.budget_notes || "" };
     const safeTitle = d.title.replace(/'/g, "\\'").replace(/"/g, "&quot;");
     const valStr = draft.estimated_budget > 0 ? draft.estimated_budget : "";
+    const savedStr = draft.savedAmount > 0 ? draft.savedAmount : "";
 
     return `
       <div class="p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
@@ -1475,21 +1891,30 @@ function renderBudgetPlannerList() {
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <div>
             <div class="flex items-center justify-between mb-1">
-              <span class="text-[11px] text-slate-400">예상 금액 (원)</span>
+              <span class="text-[11px] text-slate-400">목표 예산 (원)</span>
               <span id="planner-korean-${d.id}" class="text-[11px] font-bold text-amber-300">${formatKoreanCurrency(draft.estimated_budget)}</span>
             </div>
-            <input type="number" min="0" step="10000" value="${valStr}" placeholder="금액 입력 (예: 1500000)"
+            <input type="number" min="0" step="10000" value="${valStr}" placeholder="예: 1500000"
               oninput="window.onPlannerBudgetInput('${d.id}', this.value)"
               class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-amber-500 outline-none text-base sm:text-sm text-white" />
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[11px] text-slate-400">현재 준비됨 (원)</span>
+              <span id="planner-saved-korean-${d.id}" class="text-[11px] font-bold text-emerald-300">${formatKoreanCurrency(draft.savedAmount)}</span>
+            </div>
+            <input type="number" min="0" step="10000" value="${savedStr}" placeholder="예: 300000"
+              oninput="window.onPlannerSavedInput('${d.id}', this.value)"
+              class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-emerald-500 outline-none text-base sm:text-sm text-white" />
           </div>
           <div>
             <div class="mb-1">
               <span class="text-[11px] text-slate-400">예산 메모 / 자금 계획</span>
             </div>
-            <input type="text" value="${(draft.budget_notes || '').replace(/"/g, '&quot;')}" placeholder="예: 매월 50만 저축, 검색 최저가 기준"
+            <input type="text" value="${(draft.budget_notes || '').replace(/"/g, '&quot;')}" placeholder="예: 매월 50만 적립"
               oninput="window.onPlannerNotesInput('${d.id}', this.value)"
               class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 focus:border-amber-500 outline-none text-base sm:text-sm text-white" />
           </div>
@@ -1505,11 +1930,13 @@ async function saveAllBudgets() {
     const draft = plannerDraftBudgets[d.id];
     if (!draft) return d;
     const newBudget = parseInt(draft.estimated_budget, 10) || 0;
+    const newSaved = parseInt(draft.savedAmount, 10) || 0;
     const newNotes = (draft.budget_notes || "").trim();
-    if (newBudget !== (d.estimated_budget || 0) || newNotes !== (d.budget_notes || "")) {
+    if (newBudget !== (d.estimated_budget || 0) || newSaved !== (d.savedAmount || 0) || newNotes !== (d.budget_notes || "")) {
       const updated = {
         ...d,
         estimated_budget: newBudget,
+        savedAmount: newSaved,
         budget_notes: newNotes,
         updated_at: new Date().toISOString()
       };
@@ -1520,10 +1947,11 @@ async function saveAllBudgets() {
   });
 
   saveDreamsLocally();
+  saveUserProfile({ monthlySavingCapacity: userProfileData.monthlySavingCapacity });
   updateCounts();
   renderDreams();
   closeBudgetPlannerModal();
-  showToast("모든 꿈의 예산이 깔끔하게 정리되었습니다! 💰✨");
+  showToast("모든 꿈의 예산과 준비 금액이 저장되었습니다! 💰✨");
 
   if (currentUser && changedDreams.length > 0) {
     try {
@@ -1595,6 +2023,380 @@ async function importDataFromJson(file) {
   }
 }
 
+// --- Stage 2: My Why, Streak, Dream 100, AI Refine, Future Diary ---
+
+const PROFILE_STORAGE_KEY = "my_dream_board_profile";
+const DREAM100_STORAGE_KEY = "my_dream_100_list";
+
+const INSPIRATION_QUESTIONS = {
+  DO: [
+    "돈과 시간이 충분하다면 이번 달에 가장 먼저 하고 싶은 것은?",
+    "평생 한 번은 꼭 도전해보고 싶은 버킷리스트 경험은?",
+    "매주 루틴으로 즐기고 싶은 나만의 취미 생활은?"
+  ],
+  HAVE: [
+    "매일 아침 눈을 뜰 때 나를 미소 짓게 만드는 공간이나 물건은?",
+    "내 삶의 질과 건강을 한 단계 높여줄 아이템은?",
+    "온전히 내 힘으로 소유하고 싶은 드림카나 드림하우스는?"
+  ],
+  GIVE: [
+    "사랑하는 부모님이나 가족에게 가장 먼저 선물하고 싶은 것은?",
+    "경제적 여유가 생겼을 때 조용히 돕고 싶은 사람이나 단체는?",
+    "소중한 사람들과 함께 누리고 싶은 특별한 기억은?"
+  ],
+  GO: [
+    "사랑하는 사람들과 일주일 이상 머물며 쉬고 싶은 여행지는?",
+    "계절마다 한 번씩 꼭 찾아가고 싶은 나만의 안식처는?",
+    "내 영감을 깨워줄 세계의 명소나 도시는?"
+  ],
+  BE: [
+    "3년 뒤 나는 어떤 에너지와 표정을 가진 사람으로 기억되고 싶나요?",
+    "주변 사람들에게 어떤 선한 영향력을 주는 리더가 되고 싶나요?",
+    "내가 가장 존경하는 나 자신의 모습은 어떤 모습인가요?"
+  ]
+};
+
+function loadLocalUserProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (raw) {
+      userProfileData = { ...userProfileData, ...JSON.parse(raw) };
+    }
+    const raw100 = localStorage.getItem(DREAM100_STORAGE_KEY);
+    if (raw100) {
+      dream100List = JSON.parse(raw100) || [];
+    }
+  } catch {}
+  renderMyWhyBanner();
+  updateStreakUI();
+}
+
+async function loadUserProfile(uid) {
+  loadLocalUserProfile();
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (snap.exists()) {
+      userProfileData = { ...userProfileData, ...snap.data() };
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfileData));
+      renderMyWhyBanner();
+      updateStreakUI();
+    }
+  } catch {}
+}
+
+async function saveUserProfile(partial) {
+  userProfileData = { ...userProfileData, ...partial, updatedAt: new Date().toISOString() };
+  try {
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfileData));
+  } catch {}
+  renderMyWhyBanner();
+  updateStreakUI();
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), userProfileData, { merge: true });
+    } catch {}
+  }
+}
+
+function renderMyWhyBanner() {
+  if (!myWhyList) return;
+  const whys = Array.isArray(userProfileData.myWhy) && userProfileData.myWhy.length > 0
+    ? userProfileData.myWhy
+    : ["나의 첫 번째 Why를 적어보세요"];
+  myWhyList.innerHTML = whys.slice(0, 3).map((txt, idx) => `
+    <div class="p-2.5 rounded-xl bg-slate-900/70 border border-purple-500/20 flex items-start space-x-2">
+      <span class="w-5 h-5 rounded-full bg-purple-600/40 text-purple-200 text-[10px] font-bold flex items-center justify-center shrink-0">${idx + 1}</span>
+      <span class="leading-snug text-slate-200">${txt || "아직 작성되지 않음"}</span>
+    </div>
+  `).join("");
+}
+
+function openWhyModal() {
+  const whys = userProfileData.myWhy || [];
+  document.getElementById("why-input-1").value = whys[0] || "";
+  document.getElementById("why-input-2").value = whys[1] || "";
+  document.getElementById("why-input-3").value = whys[2] || "";
+  modalWhy.classList.remove("hidden");
+}
+
+async function handleWhyFormSubmit(e) {
+  e.preventDefault();
+  const w1 = document.getElementById("why-input-1").value.trim();
+  const w2 = document.getElementById("why-input-2").value.trim();
+  const w3 = document.getElementById("why-input-3").value.trim();
+  const list = [w1, w2, w3].filter(Boolean);
+  await saveUserProfile({ myWhy: list.length > 0 ? list : ["나의 꿈을 이루기 위해"] });
+  modalWhy.classList.add("hidden");
+  showToast("나의 핵심 Why 3가지가 저장되었습니다! ✨");
+}
+
+function updateStreakUI() {
+  const count = userProfileData.visualizationStreak?.count || 0;
+  if (streakCountText) streakCountText.textContent = `${count}일 연속`;
+  if (streakCountMobile) streakCountMobile.textContent = `${count}일`;
+}
+
+async function checkinVisualizationStreak() {
+  const today = new Date().toISOString().split("T")[0];
+  const prev = userProfileData.visualizationStreak || { count: 0, lastCheckedDate: "" };
+  if (prev.lastCheckedDate === today) {
+    showToast(`오늘도 이미 시각화 체크인을 완료하셨습니다! (🔥 ${prev.count}일 연속)`);
+    return;
+  }
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const nextCount = prev.lastCheckedDate === yesterday ? prev.count + 1 : 1;
+  await saveUserProfile({
+    visualizationStreak: { count: nextCount, lastCheckedDate: today }
+  });
+  if (window.confetti) window.confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+  showToast(`오늘의 시각화 완료! 🔥 ${nextCount}일 연속 기록 중!`);
+}
+
+function renderInspirationChips(cat) {
+  if (!inspirationChips) return;
+  const qs = INSPIRATION_QUESTIONS[cat] || INSPIRATION_QUESTIONS.DO;
+  inspirationChips.innerHTML = qs.map(q => {
+    const safeQ = q.replace(/'/g, "\\'");
+    return `<button type="button" onclick="window.applyInspirationChip('${safeQ}')" class="whitespace-nowrap px-3 py-1.5 rounded-full bg-indigo-950/60 hover:bg-indigo-900 border border-indigo-500/30 text-[11px] text-indigo-200 transition shrink-0">${q}</button>`;
+  }).join("");
+}
+
+function applyInspirationChip(questionText) {
+  const whyInput = document.getElementById("form-why-note");
+  if (whyInput && !whyInput.value.trim()) {
+    whyInput.value = questionText;
+  }
+  document.getElementById("form-title")?.focus();
+  showToast("질문을 떠올리며 자유롭게 꿈을 적어보세요! ✨");
+}
+
+async function handleAiRefine() {
+  const titleEl = document.getElementById("form-title");
+  const descEl = document.getElementById("form-vivid-desc");
+  const affEl = document.getElementById("form-affirmation");
+  const title = titleEl.value.trim();
+  const note = descEl.value.trim() || document.getElementById("form-why-note").value.trim();
+  const category = document.querySelector('input[name="form-cat"]:checked')?.value || "DO";
+
+  if (!title) {
+    alert("먼저 소망 제목을 간단히 입력해 주세요!");
+    titleEl.focus();
+    return;
+  }
+
+  const origHtml = btnAiRefine.innerHTML;
+  btnAiRefine.disabled = true;
+  btnAiRefine.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>다듬는 중...</span>`;
+
+  try {
+    if (currentUser && navigator.onLine) {
+      const headers = await getAuthHeaders();
+      const res = await fetch("/api/refine-dream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ mode: "refine", title, note, category })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.vivid_description) descEl.value = data.vivid_description;
+        if (data.affirmation) affEl.value = data.affirmation;
+        showToast("Gemini Pro가 생생한 묘사와 확언을 다듬었습니다! ✨");
+        return;
+      }
+    }
+    // Warm local fallback when guest/offline
+    descEl.value = `나는 지금 '${title}'을(를) 온전히 이루었다. 눈앞에 펼쳐진 생생한 풍경과 따뜻한 공기를 느끼며 가슴 벅찬 감사와 자유로움을 만끽하고 있다.`;
+    affEl.value = `나는 이미 '${title}'을(를) 기쁘고 여유롭게 누리고 있다.`;
+    showToast("생생한 현재형 묘사와 확언이 채워졌습니다! ✨");
+  } catch {
+    showToast("AI 다듬기 중 잠시 오류가 발생했습니다.");
+  } finally {
+    btnAiRefine.disabled = false;
+    btnAiRefine.innerHTML = origHtml;
+  }
+}
+
+// Dream 100 Quick Discovery
+function openDream100Modal() {
+  loadLocalUserProfile();
+  renderDream100List();
+  modalDream100.classList.remove("hidden");
+}
+
+function saveDream100Locally() {
+  try {
+    localStorage.setItem(DREAM100_STORAGE_KEY, JSON.stringify(dream100List));
+  } catch {}
+}
+
+function handleDream100Add(e) {
+  e.preventDefault();
+  const title = dream100Input.value.trim();
+  if (!title) return;
+  dream100List.unshift({
+    id: "d100-" + Date.now(),
+    category: dream100Cat.value || "DO",
+    title,
+    promoted: false
+  });
+  dream100Input.value = "";
+  saveDream100Locally();
+  renderDream100List();
+}
+
+function renderDream100List() {
+  if (!dream100ListEl) return;
+  if (dream100Counter) dream100Counter.textContent = `${dream100List.length} / 100`;
+
+  if (dream100List.length === 0) {
+    dream100ListEl.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">아직 적은 꿈이 없습니다. 마음 가는 대로 한 줄씩 적어보세요!</div>`;
+    return;
+  }
+
+  const icons = { DO: "🏃", HAVE: "💎", GIVE: "💝", GO: "✈️", BE: "🌟" };
+  dream100ListEl.innerHTML = dream100List.map((item, idx) => `
+    <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
+      <div class="flex items-center space-x-2 min-w-0">
+        <span class="text-sm shrink-0">${icons[item.category] || "✨"}</span>
+        <span class="text-xs sm:text-sm text-slate-200 truncate ${item.promoted ? 'line-through text-slate-500' : ''}">${item.title}</span>
+      </div>
+      <div class="flex items-center space-x-1.5 shrink-0">
+        ${item.promoted
+          ? `<span class="px-2 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 text-[10px] font-bold">승격됨</span>`
+          : `<button type="button" onclick="window.promoteDream100Item(${idx})" class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold transition">✨ 카드 승격</button>`
+        }
+        <button type="button" onclick="window.deleteDream100Item(${idx})" class="p-1.5 text-slate-500 hover:text-rose-400 text-xs">
+          <i class="fa-regular fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function promoteDream100Item(idx) {
+  const item = dream100List[idx];
+  if (!item) return;
+  const newDream = normalizeDream({
+    id: "dream-" + Date.now(),
+    category: item.category || "DO",
+    title: item.title,
+    targetYearBucket: "1Y",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
+  dreams.unshift(newDream);
+  item.promoted = true;
+  saveDreamsLocally();
+  saveDream100Locally();
+  updateCounts();
+  renderDreams();
+  renderDream100List();
+  showToast(`'${item.title}'이(가) 정식 꿈 카드로 승격되었습니다! ✨`);
+
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "dreams", newDream.id), newDream);
+    } catch {}
+  }
+}
+
+function deleteDream100Item(idx) {
+  dream100List.splice(idx, 1);
+  saveDream100Locally();
+  renderDream100List();
+}
+
+// Future Diary & Main View Switcher
+function switchMainView(viewName) {
+  if (viewName === "diary") {
+    sectionDreamBoard.classList.add("hidden");
+    headerSubbar?.classList.add("hidden");
+    sectionFutureDiary.classList.remove("hidden");
+    renderFutureDiaryList();
+  } else {
+    sectionFutureDiary.classList.add("hidden");
+    sectionDreamBoard.classList.remove("hidden");
+    headerSubbar?.classList.remove("hidden");
+  }
+  mobileNavBtns.forEach(btn => {
+    const active = btn.dataset.nav === viewName;
+    btn.classList.toggle("text-purple-400", active);
+    btn.classList.toggle("text-slate-400", !active);
+  });
+}
+
+function renderFutureDiaryList() {
+  if (!futureDiaryList) return;
+  const diaryDreams = dreams.filter(d => d.futureDiary && d.futureDiary.content);
+  if (diaryDreams.length === 0) {
+    futureDiaryList.innerHTML = `
+      <div class="col-span-full text-center py-16 px-4 glass-panel rounded-2xl border border-slate-800">
+        <i class="fa-solid fa-book-open text-3xl text-emerald-400/60 mb-3"></i>
+        <p class="text-sm font-bold text-slate-300">아직 작성된 미래 일기가 없습니다</p>
+        <p class="text-xs text-slate-500 mt-1">꿈이 이미 이루어진 미래의 하루를 현재형으로 먼저 살아보세요.</p>
+      </div>
+    `;
+    return;
+  }
+
+  futureDiaryList.innerHTML = diaryDreams.map(d => `
+    <div class="glass-panel rounded-2xl p-5 border border-emerald-500/25 space-y-3">
+      <div class="flex items-center justify-between">
+        <span class="px-2.5 py-1 rounded-lg bg-emerald-950/70 text-emerald-300 border border-emerald-700/50 text-xs font-bold">
+          📅 ${d.futureDiary.date || '미래의 어느 날'} · ${d.futureDiary.weather || '맑음'}
+        </span>
+        <button onclick="window.openDiaryModal('${d.id}')" class="text-xs text-slate-400 hover:text-white">
+          <i class="fa-regular fa-pen-to-square"></i> 수정
+        </button>
+      </div>
+      <h3 class="text-base font-bold text-white">✨ ${d.title}</h3>
+      <p class="text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line">${d.futureDiary.content}</p>
+    </div>
+  `).join("");
+}
+
+function openDiaryModal(dreamId = null) {
+  if (dreams.length === 0) {
+    alert("먼저 연결할 꿈을 1개 이상 등록해 주세요!");
+    return;
+  }
+  const select = document.getElementById("diary-dream-select");
+  select.innerHTML = dreams.map(d => `<option value="${d.id}">${d.title}</option>`).join("");
+  if (dreamId) select.value = dreamId;
+
+  const target = dreams.find(d => d.id === select.value) || dreams[0];
+  document.getElementById("diary-date").value = target.futureDiary?.date || new Date(Date.now() + 365 * 86400000).toISOString().split("T")[0];
+  document.getElementById("diary-weather").value = target.futureDiary?.weather || "맑음";
+  document.getElementById("diary-content").value = target.futureDiary?.content || "";
+  modalFutureDiary.classList.remove("hidden");
+}
+
+async function handleDiaryFormSubmit(e) {
+  e.preventDefault();
+  const dreamId = document.getElementById("diary-dream-select").value;
+  const d = dreams.find(item => item.id === dreamId);
+  if (!d) return;
+
+  d.futureDiary = {
+    date: document.getElementById("diary-date").value,
+    weather: document.getElementById("diary-weather").value.trim() || "맑음",
+    content: document.getElementById("diary-content").value.trim()
+  };
+  d.updated_at = new Date().toISOString();
+
+  saveDreamsLocally();
+  renderFutureDiaryList();
+  modalFutureDiary.classList.add("hidden");
+  showToast("미래 일기가 소중하게 기록되었습니다! 📖✨");
+
+  if (currentUser) {
+    try {
+      await setDoc(doc(db, "users", currentUser.uid, "dreams", d.id), d, { merge: true });
+    } catch {}
+  }
+}
+
 // Expose handlers globally for inline onclick templates inside ES module
 window.openDreamModal = openDreamModal;
 window.openMediaModal = openMediaModal;
@@ -1605,7 +2407,13 @@ window.selectWebMedia = selectWebMedia;
 window.openBudgetPlannerModal = openBudgetPlannerModal;
 window.searchPriceForDream = searchPriceForDream;
 window.onPlannerBudgetInput = onPlannerBudgetInput;
+window.onPlannerSavedInput = onPlannerSavedInput;
 window.onPlannerNotesInput = onPlannerNotesInput;
+window.openDream100Modal = openDream100Modal;
+window.promoteDream100Item = promoteDream100Item;
+window.deleteDream100Item = deleteDream100Item;
+window.openDiaryModal = openDiaryModal;
+window.applyInspirationChip = applyInspirationChip;
 
 // Start application
 if (document.readyState === "loading") {
